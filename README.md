@@ -1,134 +1,126 @@
 # NAWA
-An AI-powered virtual lab that helps students learn science through simulations.
+
+An AI-powered virtual lab that helps students learn science through interactive simulations.
 
 **Making the Invisible, Understandable**
 
-An AI-powered simulation lab for the science you can't see — electromagnetic fields, chemical reactions, and cellular processes.
+NAWA is an AI-powered simulation lab for the science you can't see: electromagnetic fields, chemical reactions, and cellular processes.
 
-> Built for the **JSYP Hackathon** · Education Sector · Phase 1
+> Built for the **JSYP Hackathon** · Education Sector · Phase 1  
 > Team **4 BITS**: Salma, Mohammad, Tasneem, Ro'aa
 
 ---
 
 ## The Problem
 
-Science is taught through textbooks, lectures, and formulas — but lab time is scarce, so students learn the laws without ever seeing them work.
+Science is often taught through textbooks, lectures, and formulas, while real lab access remains limited. Students end up memorizing laws without truly seeing them in action.
 
-- **Limited Lab Access** — cost, equipment, time, and safety concerns keep many classrooms out of the laboratory entirely.
-- **Memorizing, Not Understanding** — students recall formulas and definitions but struggle to explain the concepts behind them.
-- **Hard to Picture, Hard to Engage** — concepts like electromagnetic induction, electricity, and mechanics are difficult to grasp without seeing them in action.
+- **Limited Lab Access**: Cost, equipment, time, and safety constraints keep many classrooms away from hands-on experiments.
+- **Memorizing, Not Understanding**: Students may recall formulas and definitions but still struggle to explain the concepts behind them.
+- **Hard to Picture, Hard to Engage**: Topics like electromagnetic induction, electricity, and mechanics are difficult to grasp without visualization and interaction.
 
 ## Our Solution
 
-LUMEN is an AI-powered web platform where students **run** the experiment, not just read about it.
+NAWA is an AI-powered web platform where students **run** the experiment, not just read about it.
 
 | Feature | Description |
 |---|---|
-| **Interactive Simulations** | Adjust variables and watch the effects instantly, in experiments that replicate a real lab. |
-| **AI Coach** | Real-time guidance and explanations that walk students through every step of the experiment. |
-| **Quizzes & Feedback** | A quiz after every experiment reinforces learning and confirms real understanding. |
+| **Interactive Simulations** | Adjust variables and watch the effects instantly in experiments that feel like a real lab. |
+| **AI Coach** | Get real-time guidance and explanations through every step of the experiment. |
+| **Quizzes & Feedback** | Reinforce learning with short evaluations that confirm real understanding. |
 
-**Flow:** Explore → Understand → Master
+**Flow:** Explore -> Understand -> Master
 
 ## How It Works
 
 ### Two ways in, one experience
-- **School students** — scan a QR code printed next to the experiment in their textbook; it opens directly.
-- **University students** — choose a science type (Physics, Chemistry, Biology), then choose the experiment.
+
+- **School students**: Scan a QR code printed next to the experiment in the textbook and open it directly.
+- **University students**: Choose a science track such as Physics, Chemistry, or Biology, then choose the experiment.
 
 ### Inside the experiment
-1. **Equipment appears** — based on the experiment chosen, the exact equipment shows up (coils, beakers, charges, etc.)
-2. **Manipulate it** — adjust exactly the variables that experiment calls for (current, turns, concentration...) and watch it happen.
-3. **Understand why** — live guidance, AI-powered questions, smart in-experience alerts, and an interactive chatbot for support.
-4. **Personalized quiz** — a short adaptive evaluation generated dynamically from the student's own actions.
+
+1. **Equipment appears**: Based on the selected experiment, the right tools and setup are shown immediately.
+2. **Manipulate it**: Adjust the variables that matter for that experiment and watch the results update live.
+3. **Understand why**: Receive AI guidance, live hints, interactive support, and step-by-step clarification.
+4. **Personalized quiz**: Finish with a short adaptive evaluation generated from the student's own actions.
 
 ## Who Benefits
 
-- **Students** — build real intuition, learn at their own pace, no physical lab required.
-- **Teachers** — real-time learning analytics reveal misconceptions and class-wide knowledge gaps automatically.
-- **Schools & Ministries** — a low-cost way to deliver lab-quality science education, even where equipment is limited.
+- **Students**: Build real intuition, learn at their own pace, and practice without needing a physical lab.
+- **Teachers**: Gain better visibility into misconceptions and classroom learning gaps.
+- **Schools and Ministries**: Deliver lab-quality science education at lower cost, even where equipment is limited.
 
 ## Competitive Edge
 
-| Aspect | Existing Solutions | LUMEN |
+| Aspect | Existing Solutions | NAWA |
 |---|---|---|
 | Content Type | Educational videos only | Interactive simulations |
-| Student Role | Passive watching | Hands-on practice & experimentation |
+| Student Role | Passive watching | Hands-on practice and experimentation |
 | Feedback | No instant guidance | Smart AI coach with continuous support |
-| Assessment | Separated from the experiment | Built into the experience in real time |
+| Assessment | Separate from the experiment | Built into the experience in real time |
 | Personalization | Same content for everyone | Personalized learning path |
 
 ## Architecture
 
-```
-Frontend Website  →  Simulation Engine  →  Backend + Events  →  AI Coach + Quiz
+```text
+Web Experience -> Simulation Engine -> Backend Events -> AI Coach and Quiz
 ```
 
-- **Frontend Website** — Next.js / React interface, experiment selection + sliders, responsive student experience.
-- **Simulation Engine** — physics formulas in JavaScript, SVG/Canvas animations, real-time variable updates.
-- **Backend + Events** — lightweight API layer, tracks student actions, sends experiment context to the AI.
-- **AI Coach + Quiz** — context-based alerts, optional chatbot support, mixed quiz after completion.
+- **Web Experience**: Student-facing interface for experiment selection, controls, and interactive learning.
+- **Simulation Engine**: Core science logic and visual feedback for each experiment.
+- **Backend Events**: Tracks actions and sends experiment context for guidance and analytics.
+- **AI Coach and Quiz**: Explains, guides, and generates adaptive assessment flows.
 
 > The simulation calculates the science. The AI explains, guides, and personalizes the learning.
 
-## Project Structure
+## Repository Structure
 
-```
-lumen/
-├── apps/
-│   ├── web/                # Next.js frontend (experiment selection, UI, sliders)
-│   └── api/                 # Backend layer (API routes, student action tracking)
-├── packages/
-│   ├── simulation-engine/  # Physics/chemistry logic + Canvas/SVG animations
-│   └── ai-coach/            # AI coach logic, prompts, and quiz generation
-├── docs/
-│   └── architecture.md
-└── README.md
+```text
+NAWA/
+|-- web/
+|   `-- index.html          # Main frontend prototype
+|-- assets/
+|   `-- brand/              # Logos, icons, and brand guide images
+|-- docs/
+|   `-- reference/          # Video and visual reference frames
+`-- README.md
 ```
 
 ## Roadmap
 
 | Phase | Focus |
 |---|---|
-| 01 | Define Experiments — select physics laws and learning goals |
-| 02 | Build Simulations — convert formulas into interactive visuals |
-| 03 | Connect AI Coach — send actions + results for guided feedback |
-| 04 | Add Quiz Flow — generate questions based on student interaction |
-| 05 | Test & Expand — improve usability and add more experiments |
+| 01 | Define experiments and learning goals |
+| 02 | Build simulations from scientific concepts |
+| 03 | Connect the AI coach to experiment activity |
+| 04 | Add adaptive quiz flows |
+| 05 | Test, improve usability, and expand content |
 
-## What We'll Build (Phase 2)
+## What We'll Build Next
 
-- Two entry paths: QR-code linking for school textbooks, subject-then-experiment picker for university students.
-- Simulation modules in Physics, Chemistry, and Biology (fields, reactions, cell processes) using existing 2D canvas libraries.
-- A working AI mentor grounded in the live simulation state, via an LLM API.
-- A 3-question adaptive evaluation generated dynamically from the student's own actions.
+- Two entry paths: QR-code linking for school use and a subject-first experiment picker for university use.
+- Simulation modules across Physics, Chemistry, and Biology.
+- A working AI mentor grounded in the live simulation state.
+- A short adaptive evaluation generated dynamically from the student's actions.
 
-## Future Vision (Beyond This Competition)
+## Future Vision
 
-- Teacher dashboard & class analytics
+- Teacher dashboard and classroom analytics
 - Multi-language support
 
-## Getting Started
+## Run Locally
 
-```bash
-# Clone the repo
-git clone https://github.com/Salma-ja/NAWA.git
-cd NAWA
+Open `web/index.html` in a browser.
 
-# Install frontend dependencies
-cd apps/web
-npm install
-npm run dev
-```
-
-## Team — 4 BITS
+## Team
 
 | Name | Role |
 |---|---|
-| Salma | leader & Front end develper |
-| Mohammad | Backend developer|
+| Salma | Leader and frontend developer |
+| Mohammad | Backend developer |
 | Tasneem | Designer |
-| Ro'aa | AI Engineer|
+| Ro'aa | AI engineer |
 
 ## References
 
