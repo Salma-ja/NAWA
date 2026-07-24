@@ -1,5 +1,6 @@
 # NAWA
 An AI-powered virtual lab that helps students learn science through simulations.
+# LUMEN
 
 **Making the Invisible, Understandable**
 
@@ -20,7 +21,7 @@ Science is taught through textbooks, lectures, and formulas — but lab time is 
 
 ## Our Solution
 
- is an AI-powered web platform where students **run** the experiment, not just read about it.
+LUMEN is an AI-powered web platform where students **run** the experiment, not just read about it.
 
 | Feature | Description |
 |---|---|
