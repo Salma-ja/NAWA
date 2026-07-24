@@ -125,10 +125,10 @@ npm run dev
 
 | Name | Role |
 |---|---|
-| Salma | — |
-| Mohammad | — |
-| Tasneem | — |
-| Ro'aa | — |
+| Salma | leader & Front end develper |
+| Mohammad | Backend developer|
+| Tasneem | Designer |
+| Ro'aa | AI Engineer|
 
 ## References
 
