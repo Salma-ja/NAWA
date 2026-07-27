@@ -261,6 +261,19 @@
       flex-wrap: nowrap;
     }
 
+    .profile-pill {
+      max-width: 230px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: var(--text);
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .toggle-btn {
       min-width: auto;
     }
@@ -532,6 +545,164 @@
       color: var(--text);
       font-size: 12px;
       backdrop-filter: blur(12px);
+    }
+
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(4, 11, 20, 0.7);
+      backdrop-filter: blur(14px);
+    }
+
+    .login-shell {
+      position: relative;
+      width: min(920px, 100%);
+      border-radius: 32px;
+      padding: 28px;
+      background: linear-gradient(180deg, rgba(14, 25, 43, 0.97), rgba(10, 21, 38, 0.97));
+      border: 1px solid rgba(255,255,255,0.09);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+      display: grid;
+      gap: 20px;
+    }
+
+    .login-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 38px;
+      height: 38px;
+      border: 0;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .login-copy h2 {
+      margin: 0 0 10px;
+      font-size: clamp(30px, 4vw, 42px);
+      line-height: 1.05;
+    }
+
+    .login-copy p {
+      margin: 0;
+      max-width: 720px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .login-eyebrow {
+      margin-bottom: 14px;
+    }
+
+    .login-role-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .login-role-card {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      background: rgba(255,255,255,0.035);
+      color: var(--text);
+      padding: 20px;
+      text-align: start;
+      cursor: pointer;
+      display: grid;
+      gap: 10px;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .login-role-card:hover,
+    .login-role-card.active {
+      transform: translateY(-2px);
+      border-color: rgba(91, 163, 255, 0.34);
+      background: linear-gradient(180deg, rgba(26,111,232,0.14), rgba(108,63,232,0.1));
+    }
+
+    .login-role-card strong {
+      font-size: 20px;
+    }
+
+    .login-role-card span {
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
+
+    .login-form-card {
+      padding: 22px;
+      border-radius: 28px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: grid;
+      gap: 18px;
+    }
+
+    .login-form-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .login-form-head strong {
+      font-size: 20px;
+    }
+
+    .login-form-head span,
+    .login-helper {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .login-form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .login-field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .login-field span {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .login-field input {
+      width: 100%;
+      min-width: 0;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 14px 16px;
+      outline: none;
+      font: inherit;
+    }
+
+    .login-field input::placeholder {
+      color: var(--muted);
+    }
+
+    .login-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
     .ai-chat-widget {
@@ -1066,6 +1237,48 @@
       overflow: hidden;
     }
 
+    .materials-shell {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+
+    .materials-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 10px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .materials-tab {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 18px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+    }
+
+    .materials-tab:hover,
+    .materials-tab.active {
+      color: var(--text);
+      background: linear-gradient(135deg, rgba(26,111,232,0.18), rgba(108,63,232,0.18));
+      transform: translateY(-1px);
+    }
+
+    .materials-subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+      padding-inline: 4px;
+    }
+
     .lab-experiment-head {
       display: flex;
       justify-content: space-between;
@@ -1102,6 +1315,10 @@
       grid-template-columns: 1.15fr 0.85fr;
       gap: 20px;
       align-items: stretch;
+      padding: 18px;
+      border-radius: 26px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
     }
 
     .induction-stage {
@@ -1468,13 +1685,1027 @@
       display: grid;
       gap: 16px;
       align-content: start;
+      min-width: 0;
+    }
+
+    .card-lite {
+      padding: 18px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .bio-lab-layout {
+      display: grid;
+      grid-template-columns: 0.78fr 1.25fr 0.97fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .bio-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .bio-panel-head strong {
+      font-size: 18px;
+      color: var(--text);
+    }
+
+    .bio-switch-row,
+    .bio-speed-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .bio-switch-row span,
+    .bio-speed-row span {
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .bio-switch {
+      min-width: 88px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    .bio-switch.on {
+      background: linear-gradient(135deg, rgba(26,111,232,0.92), rgba(108,63,232,0.92));
+      color: white;
+    }
+
+    .bio-slider-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .bio-slider {
+      display: grid;
+      gap: 8px;
+    }
+
+    .bio-slider span {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .bio-speed-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .bio-speed-btn {
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+      font: inherit;
+      font-weight: 700;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .bio-speed-btn.active {
+      color: white;
+      background: linear-gradient(135deg, rgba(26,111,232,0.92), rgba(108,63,232,0.92));
+    }
+
+    .bio-sim {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bio-toolbelt {
+      position: absolute;
+      inset-inline-start: 18px;
+      top: 18px;
+      z-index: 3;
+      width: min(250px, calc(100% - 40px));
+      display: grid;
+      gap: 10px;
+    }
+
+    .bio-tool-card {
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(11, 27, 45, 0.78);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.16);
+      display: grid;
+      gap: 10px;
+    }
+
+    .bio-tool-card.light {
+      border-color: rgba(255,214,102,0.18);
+    }
+
+    .bio-tool-card.water {
+      border-color: rgba(56,189,248,0.18);
+    }
+
+    .bio-tool-card.co2 {
+      border-color: rgba(148,163,184,0.18);
+    }
+
+    .bio-tool-card.o2 {
+      border-color: rgba(52,211,153,0.18);
+    }
+
+    .bio-tool-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .bio-tool-head strong {
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .bio-tool-head span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .bio-switch.tool {
+      min-width: 0;
+      width: 100%;
+      justify-content: center;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .bio-mission-card {
+      position: absolute;
+      top: 18px;
+      inset-inline-end: 18px;
+      z-index: 2;
+      max-width: 240px;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: rgba(15, 35, 60, 0.86);
+      border: 1px solid rgba(91,163,255,0.16);
+      display: grid;
+      gap: 4px;
+    }
+
+    .bio-mission-card strong {
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .bio-mission-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .bio-plant-chamber {
+      position: relative;
+      min-height: 430px;
+      border-radius: 26px;
+      background:
+        radial-gradient(circle at 25% 22%, rgba(255,255,255,0.12), transparent 16%),
+        linear-gradient(180deg, rgba(32, 60, 95, 0.55), rgba(9, 21, 38, 0.82));
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+
+    .bio-chamber-glass {
+      position: absolute;
+      inset: 16px;
+      border-radius: 22px;
+      border: 1px solid rgba(153, 215, 255, 0.12);
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015));
+    }
+
+    .bio-sun {
+      position: absolute;
+      top: 26px;
+      left: 24px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #ffe699 0%, #ffcc66 56%, rgba(255,204,102,0.2) 100%);
+      box-shadow: 0 0 30px rgba(255, 210, 115, 0.34);
+      opacity: 0.25;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .bio-sun.on {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+
+    .bio-sun-rays {
+      position: absolute;
+      left: 70px;
+      top: 54px;
+      width: 120px;
+      height: 6px;
+      background: linear-gradient(90deg, rgba(255,220,122,0.9), rgba(255,220,122,0));
+      filter: blur(1px);
+      transform: rotate(18deg);
+    }
+
+    .bio-plant {
+      position: absolute;
+      left: 50%;
+      bottom: 54px;
+      width: 220px;
+      height: 260px;
+      transform: translateX(-50%);
+    }
+
+    .bio-stem {
+      position: absolute;
+      left: 50%;
+      bottom: 40px;
+      width: 14px;
+      height: 150px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: linear-gradient(180deg, #31b46b, #227d48);
+    }
+
+    .bio-leaf {
+      position: absolute;
+      border-radius: 80% 0 80% 0;
+      background: linear-gradient(135deg, #4ed98f, #278a53);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+      transform-origin: bottom center;
+      transition: transform 0.3s ease, opacity 0.3s ease, filter 0.3s ease;
+    }
+
+    .bio-leaf.leaf-one {
+      left: 88px;
+      bottom: 132px;
+      width: 78px;
+      height: 52px;
+      transform: rotate(-28deg);
+    }
+
+    .bio-leaf.leaf-two {
+      left: 46px;
+      bottom: 94px;
+      width: 68px;
+      height: 46px;
+      transform: rotate(128deg);
+    }
+
+    .bio-leaf.leaf-three {
+      right: 38px;
+      bottom: 92px;
+      width: 68px;
+      height: 46px;
+      transform: rotate(-18deg);
+    }
+
+    .bio-roots {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 110px;
+      height: 46px;
+      transform: translateX(-50%);
+      border-bottom: 3px solid rgba(194, 155, 111, 0.8);
+      border-left: 3px solid transparent;
+      border-right: 3px solid transparent;
+      filter: drop-shadow(0 0 10px rgba(194,155,111,0.16));
+    }
+
+    .bio-plant-chamber.slight .bio-leaf {
+      transform: rotate(12deg) scale(0.95);
+      filter: saturate(0.8);
+    }
+
+    .bio-plant-chamber.wilted .bio-leaf {
+      transform: rotate(34deg) scale(0.84);
+      filter: saturate(0.45);
+      opacity: 0.7;
+    }
+
+    .bio-flow-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .bio-molecule {
+      position: absolute;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      animation-duration: 4.2s;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+      box-shadow: 0 0 12px rgba(0,0,0,0.18);
+    }
+
+    .bio-molecule.water { background: linear-gradient(135deg, #38bdf8, #1d4ed8); animation-name: floatUp; }
+    .bio-molecule.co2 { background: linear-gradient(135deg, #94a3b8, #64748b); animation-name: driftIn; }
+    .bio-molecule.o2 { background: linear-gradient(135deg, #34d399, #0ea5a4); animation-name: driftOut; }
+    .bio-molecule.glucose { background: linear-gradient(135deg, #f59e0b, #f97316); animation-name: pulseOrbit; }
+    .bio-molecule.atp { background: linear-gradient(135deg, #8b5cf6, #2563eb); animation-name: pulseOrbit; }
+
+    .bio-molecule.one.water { left: 42%; bottom: 58px; }
+    .bio-molecule.two.water { left: 56%; bottom: 52px; animation-delay: -1.8s; }
+    .bio-molecule.one.co2 { right: 24px; top: 112px; }
+    .bio-molecule.two.co2 { right: 48px; top: 164px; animation-delay: -2.2s; }
+    .bio-molecule.one.o2 { left: 54px; top: 124px; }
+    .bio-molecule.two.o2 { left: 80px; top: 178px; animation-delay: -1.4s; }
+    .bio-molecule.one.glucose { left: 50%; top: 156px; transform: translateX(-50%); }
+    .bio-molecule.one.atp { left: 58%; bottom: 132px; animation-delay: -1.1s; }
+
+    .bio-feedback-wrap {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .bio-feedback-card {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      font-size: 13px;
+      line-height: 1.7;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .bio-feedback-card.secondary {
+      color: var(--muted);
+    }
+
+    .bio-health-chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+    }
+
+    .bio-health-chip.healthy { color: #6ee7b7; }
+    .bio-health-chip.slight { color: #facc15; }
+    .bio-health-chip.wilted { color: #f87171; }
+
+    .bio-result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .bio-result-item {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: grid;
+      gap: 8px;
+    }
+
+    .bio-result-item span {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .bio-result-item strong {
+      color: var(--text);
+      font-size: 22px;
+    }
+
+    .bio-result-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .bio-indicator {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .bio-indicator.up { color: #6ee7b7; }
+    .bio-indicator.down { color: #fca5a5; }
+
+    .bio-status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .bio-status.high { color: #6ee7b7; }
+    .bio-status.medium { color: #facc15; }
+    .bio-status.low { color: #fca5a5; }
+
+    .bio-chart-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .bio-chart-card {
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .bio-chart-title {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .bio-chart {
+      width: 100%;
+      height: 88px;
+      display: block;
+    }
+
+    .bio-chart-axis {
+      stroke: rgba(255,255,255,0.08);
+      stroke-width: 1;
+    }
+
+    .bio-chart-line {
+      fill: none;
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bio-chart-line.oxygen { stroke: #34d399; }
+    .bio-chart-line.carbon { stroke: #94a3b8; }
+
+    .chemistry-layout {
+      display: grid;
+      grid-template-columns: 0.8fr 1.45fr 0.95fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .chem-side-panel,
+    .chemistry-core,
+    .chem-tools-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .chem-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .chem-status-chip {
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.05);
+    }
+
+    .chem-status-chip.high {
+      color: #7af4a6;
+      border-color: rgba(122, 244, 166, 0.25);
+      background: rgba(122, 244, 166, 0.12);
+    }
+
+    .chem-status-chip.medium {
+      color: #f4cb71;
+      border-color: rgba(244, 203, 113, 0.22);
+      background: rgba(244, 203, 113, 0.1);
+    }
+
+    .chem-status-chip.low {
+      color: #ff9f9f;
+      border-color: rgba(255, 159, 159, 0.22);
+      background: rgba(255, 159, 159, 0.1);
+    }
+
+    .chem-results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .chem-metric-card,
+    .chem-feedback-card,
+    .chem-story-card,
+    .chem-tool-card,
+    .chem-toggle-card,
+    .chem-direction-card,
+    .chem-half-reaction {
+      border-radius: 18px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+
+    .chem-metric-card {
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .chem-metric-card span,
+    .chem-story-card span,
+    .chem-feedback-card,
+    .chem-tool-label,
+    .chem-direction-card strong,
+    .chem-half-reaction span {
+      color: var(--muted);
+    }
+
+    .chem-metric-card strong,
+    .chem-story-card strong,
+    .chem-half-reaction strong {
+      color: var(--text);
+      font-size: 20px;
+    }
+
+    .chem-chart-stack {
+      display: grid;
+      gap: 12px;
+    }
+
+    .chem-feedback-card {
+      padding: 14px 16px;
+      line-height: 1.7;
+    }
+
+    .chem-toolbar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 14px;
+      align-items: start;
+    }
+
+    .chem-toolbar-group,
+    .chem-speed-box,
+    .chem-tool-group {
+      padding: 16px;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.035);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .chem-toolbar-group span,
+    .chem-speed-box span {
+      display: block;
+      margin-bottom: 12px;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .chem-chip-row,
+    .chem-tool-grid,
+    .chem-toggle-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .chem-chip-row {
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+
+    .chem-chip-row.secondary {
+      margin-top: 10px;
+    }
+
+    .chem-chip {
+      padding: 12px 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .chem-chip.active,
+    .chem-tool-card.active,
+    .chem-toggle-card.active {
+      background: linear-gradient(135deg, rgba(76, 109, 255, 0.3), rgba(104, 77, 255, 0.22));
+      border-color: rgba(122, 141, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .chem-stage {
+      position: relative;
+      min-height: 620px;
+      padding: 28px;
+      border-radius: 28px;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 12%, rgba(255, 236, 191, 0.08), transparent 18%),
+        linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+        linear-gradient(180deg, rgba(10, 25, 40, 0.82), rgba(9, 22, 37, 0.92));
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .chem-stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+      background-size: 56px 56px;
+      opacity: 0.32;
+      pointer-events: none;
+    }
+
+    .chem-direction-card {
+      position: absolute;
+      top: 22px;
+      width: 150px;
+      padding: 12px 14px;
+      z-index: 2;
+      display: grid;
+      gap: 6px;
+    }
+
+    .chem-direction-card.left {
+      left: 22px;
+    }
+
+    .chem-direction-card.right {
+      right: 22px;
+    }
+
+    .chem-direction-card span {
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 800;
+    }
+
+    .chem-wire {
+      position: absolute;
+      top: 102px;
+      left: 17%;
+      width: 66%;
+      height: 84px;
+      border-top: 4px solid rgba(188, 154, 113, 0.9);
+      border-radius: 120px 120px 0 0;
+      z-index: 1;
+    }
+
+    .chem-wire::before,
+    .chem-wire::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 4px;
+      height: 88px;
+      background: rgba(188, 154, 113, 0.9);
+    }
+
+    .chem-wire::before {
+      left: 0;
+    }
+
+    .chem-wire::after {
+      right: 0;
+    }
+
+    .chem-bulb {
+      position: absolute;
+      left: 50%;
+      top: -16px;
+      width: 50px;
+      height: 50px;
+      margin-left: -25px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #fff8cf, #d1a84c 68%, #7c5e19);
+      box-shadow: 0 0 0 6px rgba(20, 24, 32, 0.95);
+    }
+
+    .chem-bulb.off,
+    .chem-bulb.dim {
+      filter: grayscale(0.28) brightness(0.72);
+    }
+
+    .chem-bulb-glow {
+      position: absolute;
+      inset: -24px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255, 228, 117, 0.65), rgba(255, 228, 117, 0));
+      opacity: 0.95;
+      animation: pulse 2.2s ease-in-out infinite;
+    }
+
+    .chem-bulb.off .chem-bulb-glow,
+    .chem-bulb.dim .chem-bulb-glow {
+      opacity: 0.18;
+    }
+
+    .chem-voltmeter {
+      position: absolute;
+      left: 50%;
+      top: 62px;
+      transform: translateX(-50%);
+      padding: 10px 18px;
+      border-radius: 16px;
+      background: rgba(7, 16, 11, 0.9);
+      border: 1px solid rgba(163, 255, 126, 0.22);
+      box-shadow: inset 0 0 20px rgba(108, 255, 139, 0.12);
+      color: #a5ff7d;
+      font-size: 34px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      z-index: 2;
+    }
+
+    .chem-electron-flow {
+      position: absolute;
+      top: 84px;
+      left: 18%;
+      width: 64%;
+      display: flex;
+      justify-content: space-between;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .chem-electron {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 14px;
+      font-weight: 800;
+      color: #dff7ff;
+      background: radial-gradient(circle at 30% 30%, #4bb5ff, #194fbb 78%);
+      box-shadow: 0 10px 30px rgba(50, 121, 255, 0.22);
+      animation: pulseOrbit 1.9s ease-in-out infinite;
+    }
+
+    .chem-beakers {
+      position: absolute;
+      left: 50%;
+      bottom: 84px;
+      width: calc(100% - 92px);
+      transform: translateX(-50%);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 30px;
+      z-index: 1;
+    }
+
+    .chem-beaker {
+      position: relative;
+      width: 250px;
+      height: 290px;
+      border-radius: 30px 30px 42px 42px;
+      border: 3px solid rgba(199, 235, 255, 0.58);
+      background: linear-gradient(180deg, rgba(255,255,255,0.24), rgba(255,255,255,0.08));
+      box-shadow: inset 0 -8px 30px rgba(255,255,255,0.08), 0 18px 60px rgba(4, 10, 19, 0.24);
+      overflow: hidden;
+    }
+
+    .chem-beaker::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -8px;
+      width: 68%;
+      height: 16px;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.4);
+    }
+
+    .chem-electrode {
+      position: absolute;
+      left: 50%;
+      top: 34px;
+      width: 54px;
+      height: 150px;
+      transform: translateX(-50%);
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 30px;
+      font-weight: 900;
+      background: linear-gradient(180deg, #d4dbe5, #8a98a7);
+      color: #202937;
+      z-index: 2;
+      box-shadow: inset 0 0 18px rgba(255,255,255,0.22);
+    }
+
+    .chem-electrode.copper {
+      background: linear-gradient(180deg, #d99053, #95501e);
+      color: #2c1407;
+    }
+
+    .chem-liquid {
+      position: absolute;
+      inset-inline: 12px;
+      bottom: 10px;
+      height: 56%;
+      border-radius: 24px 24px 34px 34px;
+    }
+
+    .chem-liquid.left {
+      background: linear-gradient(180deg, rgba(218, 246, 255, 0.84), rgba(167, 220, 242, 0.56));
+    }
+
+    .chem-liquid.right {
+      background: linear-gradient(180deg, rgba(107, 207, 255, 0.82), rgba(44, 132, 232, 0.58));
+    }
+
+    .chem-solution-tag {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      padding: 10px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.84);
+      color: #13213a;
+      font-weight: 800;
+      z-index: 2;
+    }
+
+    .chem-salt-bridge {
+      position: relative;
+      width: 270px;
+      height: 150px;
+      margin-bottom: 96px;
+      border: 18px solid rgba(214, 241, 255, 0.88);
+      border-bottom: 0;
+      border-radius: 150px 150px 0 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.26), rgba(255,255,255,0.08));
+      box-shadow: inset 0 0 26px rgba(255,255,255,0.14);
+    }
+
+    .chem-salt-bridge.off {
+      opacity: 0.46;
+      filter: grayscale(0.32);
+    }
+
+    .chem-salt-bridge > span {
+      position: absolute;
+      left: 50%;
+      top: 40%;
+      transform: translate(-50%, -50%);
+      color: #10233f;
+      background: rgba(255,255,255,0.82);
+      padding: 8px 12px;
+      border-radius: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .chem-ion-flow {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      width: 70%;
+      display: flex;
+      justify-content: space-between;
+      color: #cfefff;
+      font-weight: 700;
+    }
+
+    .chem-reaction-panel {
+      position: absolute;
+      left: 50%;
+      bottom: 18px;
+      width: calc(100% - 180px);
+      transform: translateX(-50%);
+      padding: 16px;
+      border-radius: 24px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      z-index: 2;
+    }
+
+    .chem-half-reaction {
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .chem-overall-reaction {
+      grid-column: 1 / -1;
+      padding-top: 4px;
+      text-align: center;
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .chem-story-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .chem-story-card {
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+      line-height: 1.7;
+    }
+
+    .chem-tool-label {
+      margin-bottom: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .chem-tool-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .chem-tool-card {
+      padding: 14px 12px;
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .chem-toggle-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .chem-toggle-card {
+      padding: 16px;
+      display: grid;
+      gap: 8px;
+      cursor: pointer;
+      text-align: start;
+      color: var(--text);
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+    }
+
+    .chem-toggle-card span {
+      color: var(--muted);
+    }
+
+    .material-placeholder {
+      padding: 32px 24px;
+      border-radius: 26px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border: 1px solid rgba(255,255,255,0.08);
+      text-align: center;
+    }
+
+    .material-placeholder strong {
+      display: block;
+      margin-bottom: 10px;
+      font-size: 24px;
+      color: var(--text);
+    }
+
+    .material-placeholder p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
     }
 
     .meter-card,
     .control-card {
       padding: 18px;
       border-radius: 24px;
-      background: rgba(255,255,255,0.04);
+      background: rgba(255,255,255,0.035);
       border: 1px solid rgba(255,255,255,0.08);
     }
 
@@ -1587,6 +2818,60 @@
       line-height: 1.6;
     }
 
+    .faq-list {
+      display: grid;
+      gap: 12px;
+      max-width: 920px;
+    }
+
+    .faq-item {
+      border-radius: 22px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+
+    .faq-question {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      padding: 18px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 18px;
+      font-weight: 700;
+      text-align: start;
+    }
+
+    .faq-chevron {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      transition: transform 0.2s ease, color 0.2s ease;
+      flex: 0 0 auto;
+    }
+
+    .faq-chevron.open {
+      transform: rotate(180deg);
+      color: var(--text);
+    }
+
+    .faq-answer {
+      padding: 0 20px 18px;
+    }
+
+    .faq-answer p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 15px;
+    }
+
     .cta {
       margin: 36px 0 60px;
       padding: 30px;
@@ -1622,6 +2907,13 @@
       flex-wrap: nowrap;
       color: var(--muted);
       font-size: 14px;
+    }
+
+    .contact-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      align-items: end;
     }
 
     .contact-card {
@@ -1689,6 +2981,52 @@
       justify-content: flex-start;
     }
 
+    .app.rtl .materials-tabs {
+      flex-direction: row-reverse;
+    }
+
+    .app.rtl .materials-subtitle,
+    .app.rtl .material-placeholder,
+    .app.rtl .faq-item,
+    .app.rtl .faq-question,
+    .app.rtl .bio-tool-card,
+    .app.rtl .bio-feedback-card,
+    .app.rtl .bio-result-item,
+    .app.rtl .bio-panel-head,
+    .app.rtl .bio-slider,
+    .app.rtl .bio-chart-card,
+    .app.rtl .chem-tool-card,
+    .app.rtl .chem-metric-card,
+    .app.rtl .chem-feedback-card,
+    .app.rtl .chem-story-card,
+    .app.rtl .chem-toggle-card,
+    .app.rtl .chem-half-reaction,
+    .app.rtl .chem-direction-card {
+      text-align: right;
+    }
+
+    .app.rtl .chem-direction-card.left {
+      left: auto;
+      right: 22px;
+    }
+
+    .app.rtl .chem-direction-card.right {
+      right: auto;
+      left: 22px;
+    }
+
+    .app.rtl .login-close {
+      right: auto;
+      left: 18px;
+    }
+
+    .app.rtl .login-role-card,
+    .app.rtl .login-field,
+    .app.rtl .login-copy,
+    .app.rtl .login-form-card {
+      text-align: right;
+    }
+
     .app.rtl .hero-actions,
     .app.rtl .nav-links {
       flex-direction: row-reverse;
@@ -1739,11 +3077,40 @@
       50% { height: 42px; }
     }
 
+    @keyframes floatUp {
+      0% { transform: translateY(12px); opacity: 0.1; }
+      25% { opacity: 1; }
+      100% { transform: translateY(-132px); opacity: 0; }
+    }
+
+    @keyframes driftIn {
+      0% { transform: translateX(18px); opacity: 0; }
+      25% { opacity: 1; }
+      100% { transform: translateX(-90px); opacity: 0; }
+    }
+
+    @keyframes driftOut {
+      0% { transform: translateX(-14px); opacity: 0; }
+      25% { opacity: 1; }
+      100% { transform: translateX(92px); opacity: 0; }
+    }
+
+    @keyframes pulseOrbit {
+      0%, 100% { transform: translateY(0) scale(0.94); opacity: 0.4; }
+      50% { transform: translateY(-10px) scale(1); opacity: 1; }
+    }
+
     @media (max-width: 1100px) {
       .hero,
       .feature-row,
       .grid-4,
       .induction-grid { grid-template-columns: 1fr 1fr; }
+      .bio-lab-layout,
+      .chemistry-layout { grid-template-columns: 1fr; }
+      .bio-chart-grid,
+      .bio-result-grid,
+      .chem-story-grid,
+      .chem-results-grid { grid-template-columns: 1fr 1fr; }
       .grid-3 { grid-template-columns: 1fr; }
       .experiment-list { grid-template-columns: 1fr 1fr; }
     }
@@ -1761,11 +3128,27 @@
       .induction-grid,
       .hero-stats,
       .cta { grid-template-columns: 1fr; display: grid; }
+      .induction-grid {
+        padding: 14px;
+        gap: 14px;
+      }
       .hero-visual { min-height: 540px; }
       .section-head,
       .footer { display: block; }
       .footer > * + * { margin-top: 10px; }
+      .contact-cards { grid-template-columns: 1fr; }
+      .bio-result-grid,
+      .bio-chart-grid { grid-template-columns: 1fr; }
+      .chem-toolbar,
+      .chem-reaction-panel,
+      .chem-toggle-grid,
+      .chem-story-grid,
+      .chem-results-grid { grid-template-columns: 1fr; }
+      .chem-chip-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .experiment-list { grid-template-columns: 1fr; }
+      .login-role-grid,
+      .login-form-grid { grid-template-columns: 1fr; }
+      .login-shell { padding: 22px 18px; }
     }
 
     @media (max-width: 640px) {
@@ -1785,6 +3168,78 @@
       .app.rtl .ai-chat-widget {
         left: 16px;
         right: 16px;
+      }
+      .login-overlay {
+        padding: 12px;
+      }
+      .login-shell {
+        border-radius: 24px;
+      }
+      .profile-pill {
+        max-width: 100%;
+      }
+      .bio-mission-card {
+        position: relative;
+        inset: auto;
+        max-width: 100%;
+        margin-bottom: 12px;
+      }
+      .bio-toolbelt {
+        position: relative;
+        inset: auto;
+        width: 100%;
+        margin-bottom: 14px;
+      }
+      .bio-plant-chamber {
+        min-height: 320px;
+      }
+      .chem-stage {
+        min-height: 920px;
+        padding: 20px 14px;
+      }
+      .chem-direction-card {
+        position: relative;
+        top: auto;
+        left: auto;
+        right: auto;
+        width: 100%;
+      }
+      .chem-wire {
+        left: 12%;
+        width: 76%;
+      }
+      .chem-beakers {
+        width: calc(100% - 24px);
+        gap: 14px;
+        bottom: 220px;
+      }
+      .chem-beaker {
+        width: 44%;
+        height: 220px;
+      }
+      .chem-electrode {
+        height: 120px;
+        font-size: 24px;
+      }
+      .chem-salt-bridge {
+        position: absolute;
+        left: 50%;
+        bottom: 346px;
+        width: 170px;
+        height: 96px;
+        margin: 0;
+        transform: translateX(-50%);
+        border-width: 14px;
+      }
+      .chem-salt-bridge > span {
+        font-size: 12px;
+      }
+      .chem-reaction-panel {
+        width: calc(100% - 28px);
+        bottom: 18px;
+      }
+      .chem-chip-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
       .grid-4 { grid-template-columns: 1fr; }
       .dashboard { padding: 16px; }

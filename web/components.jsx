@@ -60,7 +60,7 @@ const OrbitMark = () => (
   </span>
 );
 
-const Header = ({ c, isArabic, language, theme, onToggleLanguage, onToggleTheme }) => (
+const Header = ({ c, language, onToggleLanguage, onOpenLogin, activeProfile }) => (
   <header className="nav">
     <a className="brand" href="#home">
       <OrbitMark />
@@ -69,7 +69,7 @@ const Header = ({ c, isArabic, language, theme, onToggleLanguage, onToggleTheme 
     <nav className="nav-links">
       <a href="#features">{c.nav[0]}</a>
       <a href="#experience">{c.nav[1]}</a>
-      <a href="#about">{c.nav[2]}</a>
+      <a href="#faq">{c.nav[2]}</a>
       <a href="#contact">{c.nav[3]}</a>
     </nav>
     <div className="nav-actions">
@@ -82,19 +82,8 @@ const Header = ({ c, isArabic, language, theme, onToggleLanguage, onToggleTheme 
         </svg>
         <span>{language === "ar" ? "AR" : "EN"}</span>
       </button>
-      <button className="btn icon-btn" onClick={onToggleTheme} aria-label={theme === "dark" ? c.themeNext : (isArabic ? "????? ??????" : "Dark Mode")}>
-        {theme === "dark" ? (
-          <svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"></path></svg>
-        ) : (
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="4"></circle>
-            <path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path>
-            <path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path>
-            <path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path>
-          </svg>
-        )}
-      </button>
-      <button className="btn btn-primary">{c.launchDemo}</button>
+      {activeProfile ? <div className="profile-pill">{activeProfile}</div> : null}
+      <button className="btn btn-primary" type="button" onClick={onOpenLogin}>{c.launchDemo}</button>
     </div>
   </header>
 );
@@ -105,12 +94,8 @@ const HeroSection = ({ c, rotation }) => (
       <div className="eyebrow"><span>?</span><span>{c.eyebrow}</span></div>
       <h1>{c.heroTitleBefore} <span>{c.heroTitleAccent}</span><br />{c.heroTitleAfter}</h1>
       <p>{c.heroText}</p>
-      <div className="hero-actions">
-        <button className="btn btn-primary">{c.start}</button>
-        <button className="btn btn-secondary">{c.curriculum}</button>
-      </div>
       <div className="hero-stats">
-        {c.stats.map((stat) => (
+        {c.stats.slice(1).map((stat) => (
           <div className="stat" key={stat.label}>
             <div className="stat-value"><Counter target={stat.value} suffix={stat.suffix} /></div>
             <div className="stat-label">{stat.label}</div>
@@ -167,38 +152,426 @@ const ExperimentScene = ({ stageRef, dragging, setDragging, handleStagePointer, 
   </div>
 );
 
-const ExperimentSection = ({ c, stageRef, dragging, setDragging, handleStagePointer, coilLoopOffsets, bulbPower, magnetSvgX, inducedSignal, coilTurns, magnetX, setCoilTurns, updateMagnetPosition }) => (
-  <section id="experience">
-    <div className="section-head"><div><h2>{c.experienceTitle}</h2><p>{c.experienceText}</p></div></div>
-    <div className="lab-experiment">
-      <div className="lab-experiment-head"><div><h3>{c.physicsLabTitle}</h3><p><strong>{c.physicsLabName}</strong> — {c.physicsLabText}</p></div><div className="lab-tag">{c.physicsLabTag}</div></div>
-      <div className="induction-grid">
-        <ExperimentScene stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} />
-        <div className="induction-panel">
-          <div className="meter-card"><div className="meter-head"><strong>{c.outputLabel}</strong><span className="meter-value">{inducedSignal}% · {c.outputUnit}</span></div><div className="meter-track"><div className="meter-fill" style={{ width: `${inducedSignal}%` }}></div></div><div className="meter-note">{c.physicsHint}</div></div>
-          <div className="control-card">
-            <div className="control-row"><label><span>{c.turnsLabel}</span><strong>{coilTurns}</strong></label><input type="range" min="6" max="18" value={coilTurns} onChange={(event) => setCoilTurns(Number(event.target.value))} /></div>
-            <div className="control-row"><label><span>{c.magnetLabel}</span><strong>{Math.round(magnetX * 100)}%</strong></label><input type="range" min="8" max="92" value={Math.round(magnetX * 100)} onChange={(event) => updateMagnetPosition(Number(event.target.value) / 100)} /></div>
-            <div className="control-actions"><button className="micro-btn" type="button" onClick={() => updateMagnetPosition(0.5)}>{c.insertMagnet}</button><button className="micro-btn secondary" type="button" onClick={() => updateMagnetPosition(0.16)}>{c.resetMagnet}</button></div>
-            <div className="control-note">{c.physicsLabText}</div>
+const MoleculeFlow = ({ className, label }) => <span className={`bio-molecule ${className}`}>{label}</span>;
+
+const MiniTrendChart = ({ title, points, strokeClass, valueKey }) => {
+  const safePoints = points.length ? points : [{ [valueKey]: 0 }];
+  const maxValue = Math.max(...safePoints.map((point) => point[valueKey]), 1);
+  const step = safePoints.length > 1 ? 220 / (safePoints.length - 1) : 220;
+  const d = safePoints.map((point, index) => {
+    const x = index * step;
+    const y = 84 - (point[valueKey] / maxValue) * 64;
+    return `${index === 0 ? "M" : "L"} ${x} ${y}`;
+  }).join(" ");
+
+  return (
+    <div className="bio-chart-card">
+      <div className="bio-chart-title">{title}</div>
+      <svg viewBox="0 0 220 88" className="bio-chart" aria-hidden="true">
+        <path d="M0 84 H220" className="bio-chart-axis" />
+        <path d={d} className={`bio-chart-line ${strokeClass}`} />
+      </svg>
+    </div>
+  );
+};
+
+const BiologySimulation = ({ c, currentMaterial, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment }) => {
+  const setSpeed = (speed) => setBioSettings({ ...bioSettings, timeSpeed: speed });
+  const setRange = (key, value) => setBioSettings({ ...bioSettings, [key]: Number(value) });
+  const statusLevel = (value) => value >= 67 ? c.bioStatusHigh : value >= 34 ? c.bioStatusMedium : c.bioStatusLow;
+  const statusClass = (value) => value >= 67 ? "high" : value >= 34 ? "medium" : "low";
+  const indicator = (value) => value >= 50 ? "up" : "down";
+  const toolItems = [
+    { key: "light", label: c.bioLightLabel, value: bioSettings.lightOn ? c.bioOn : c.bioOff, kind: "toggle" },
+    { key: "water", label: c.bioWaterLabel, value: `${bioSettings.water}%`, kind: "range" },
+    { key: "co2", label: c.bioCo2Label, value: `${bioSettings.co2}%`, kind: "range" },
+    { key: "o2", label: c.bioO2Label, value: `${bioSettings.o2}%`, kind: "range" }
+  ];
+  const resultItems = [
+    { label: c.bioResults.photo, value: bioMetrics.photosynthesisRate, suffix: "%", emphasize: true },
+    { label: c.bioResults.respiration, value: bioMetrics.respirationRate, suffix: "%", emphasize: true },
+    { label: c.bioResults.oxygenProduced, value: bioMetrics.oxygenProduced, suffix: "%" },
+    { label: c.bioResults.co2Consumed, value: bioMetrics.carbonDioxideConsumed, suffix: "%" },
+    { label: c.bioResults.co2Released, value: bioMetrics.carbonDioxideReleased, suffix: "%" },
+    { label: c.bioResults.glucoseProduced, value: bioMetrics.glucoseProduced, suffix: "%" },
+    { label: c.bioResults.atpProduced, value: bioMetrics.atpProduced, suffix: "%" }
+  ];
+
+  return (
+    <div className="bio-lab-layout">
+      <div className="bio-controls card-lite">
+        <div className="bio-panel-head">
+          <strong>{c.bioControlTitle}</strong>
+          <button className="micro-btn secondary" type="button" onClick={resetBiologyExperiment}>{c.bioReset}</button>
+        </div>
+        <div className="bio-slider-grid">
+          <label className="bio-slider">
+            <span>{c.bioTempLabel}<strong>{bioSettings.temperature}Â°C</strong></span>
+            <input type="range" min="10" max="45" value={bioSettings.temperature} onChange={(event) => setRange("temperature", event.target.value)} />
+          </label>
+        </div>
+        <div className="bio-speed-row">
+          <span>{c.bioSpeedLabel}</span>
+          <div className="bio-speed-actions">
+            {[1, 5, 10].map((speed) => <button key={speed} className={`bio-speed-btn ${bioSettings.timeSpeed === speed ? "active" : ""}`} type="button" onClick={() => setSpeed(speed)}>{speed}x</button>)}
           </div>
         </div>
       </div>
-      <div className="experiment-list">{c.experimentList.map((item, index) => <div className={`experiment-item ${index === 0 ? "active" : ""}`} key={item.title}><strong>{item.title}</strong><span>{item.text}</span></div>)}</div>
-    </div>
-    <div className="feature-row">
-      <div className="card"><div className="timeline">{c.steps.map((step, index) => <div className="timeline-item" key={step.title}><div className="timeline-index">0{index + 1}</div><div><h4>{step.title}</h4><p>{step.text}</p></div></div>)}</div></div>
-      <div className="card screen"><div className="screen-panel"><div className="screen-top">{c.pills.map((pill) => <div className="pill" key={pill}>{pill}</div>)}</div><div className="grid-4">{c.subjects.map((subject) => <div className="experiment-panel" key={subject.name}><div className="card-title">{subject.name}</div><p>{subject.note}</p></div>)}</div></div></div>
-    </div>
-  </section>
-);
 
-const CTASection = ({ c }) => <div className="cta" id="about"><div><h3>{c.ctaTitle}</h3><p>{c.ctaText}</p></div><div className="nav-actions"><button className="btn btn-secondary">{c.bookDemo}</button><button className="btn btn-primary">{c.getStarted}</button></div></div>;
+      <div className="bio-sim card-lite">
+        <div className="bio-mission-card">
+          <strong>{c.bioMissionTitle}</strong>
+          <span>{c.bioMissionText}</span>
+        </div>
+        <div className={`bio-plant-chamber ${bioMetrics.plantState}`}>
+          <div className="bio-toolbelt">
+            {toolItems.map((tool) => (
+              <div className={`bio-tool-card ${tool.key}`} key={tool.key}>
+                <div className="bio-tool-head">
+                  <strong>{tool.label}</strong>
+                  <span>{tool.value}</span>
+                </div>
+                {tool.kind === "toggle" ? (
+                  <button className={`bio-switch tool ${bioSettings.lightOn ? "on" : ""}`} type="button" onClick={() => setBioSettings({ ...bioSettings, lightOn: !bioSettings.lightOn })}>
+                    <span>{bioSettings.lightOn ? c.bioOn : c.bioOff}</span>
+                  </button>
+                ) : (
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={bioSettings[tool.key]}
+                    onChange={(event) => setRange(tool.key, event.target.value)}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className={`bio-sun ${bioSettings.lightOn ? "on" : "off"}`}></div>
+          {bioSettings.lightOn ? <div className="bio-sun-rays"></div> : null}
+          <div className="bio-chamber-glass"></div>
+          <div className="bio-plant">
+            <div className="bio-stem"></div>
+            <div className="bio-leaf leaf-one"></div>
+            <div className="bio-leaf leaf-two"></div>
+            <div className="bio-leaf leaf-three"></div>
+            <div className="bio-roots"></div>
+          </div>
+          <div className="bio-flow-layer">
+            <MoleculeFlow className="water one" label="H2O" />
+            <MoleculeFlow className="water two" label="H2O" />
+            <MoleculeFlow className="co2 one" label="CO2" />
+            <MoleculeFlow className="co2 two" label="CO2" />
+            <MoleculeFlow className="o2 one" label="O2" />
+            <MoleculeFlow className="o2 two" label="O2" />
+            <MoleculeFlow className="glucose one" label="C6H12O6" />
+            <MoleculeFlow className="atp one" label="ATP" />
+          </div>
+        </div>
+        <div className="bio-feedback-wrap">
+          <div className="bio-feedback-card">{bioMetrics.feedback}</div>
+          <div className="bio-feedback-card secondary">{bioMetrics.respirationFeedback}</div>
+        </div>
+      </div>
+
+      <div className="bio-results card-lite">
+        <div className="bio-panel-head">
+          <strong>{c.bioResultsTitle}</strong>
+          <span className={`bio-health-chip ${bioMetrics.plantState}`}>{bioMetrics.plantState === "healthy" ? c.bioHealthy : bioMetrics.plantState === "slight" ? c.bioSlight : c.bioWilted}</span>
+        </div>
+        <div className="bio-result-grid">
+          {resultItems.map((item) => (
+            <div className="bio-result-item" key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}{item.suffix || ""}</strong>
+              <div className="bio-result-meta">
+                <span className={`bio-indicator ${indicator(item.value)}`}>{indicator(item.value) === "up" ? "â†‘" : "â†“"}</span>
+                <span className={`bio-status ${statusClass(item.value)}`}>{statusLevel(item.value)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="bio-chart-grid">
+          <MiniTrendChart title={c.bioChartOxygen} points={bioTrend} strokeClass="oxygen" valueKey="oxygen" />
+          <MiniTrendChart title={c.bioChartCarbon} points={bioTrend} strokeClass="carbon" valueKey="carbon" />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, chemTrend, resetChemistryExperiment }) => {
+  const setSpeed = (speed) => setChemSettings({ ...chemSettings, timeSpeed: speed });
+  const pickOption = (key, value) => setChemSettings({ ...chemSettings, [key]: value });
+  const metrics = [
+    { label: c.chemResults.voltage, value: chemMetrics.voltage, suffix: "V" },
+    { label: c.chemResults.current, value: chemMetrics.current, suffix: "mA" },
+    { label: c.chemResults.electrons, value: chemMetrics.electrons, suffix: "" },
+    { label: c.chemResults.ionsMoved, value: chemMetrics.ionsMoved, suffix: "" }
+  ];
+  const halfReactionLeft = `${chemSettings.anode}(s) -> ${chemSettings.anode}2+ + 2e-`;
+  const halfReactionRight = `${chemSettings.cathode}2+ + 2e- -> ${chemSettings.cathode}(s)`;
+  const fullReaction = `${chemSettings.anode}(s) + ${chemSettings.cathode}2+(aq) -> ${chemSettings.anode}2+(aq) + ${chemSettings.cathode}(s)`;
+
+  return (
+    <div className="chemistry-layout">
+      <aside className="chem-side-panel card-lite">
+        <div className="chem-panel-head">
+          <strong>{c.chemResultsTitle}</strong>
+          <span className={`chem-status-chip ${chemMetrics.status}`}>{chemMetrics.status === "high" ? c.chemStatusHigh : chemMetrics.status === "medium" ? c.chemStatusMedium : c.chemStatusLow}</span>
+        </div>
+        <div className="chem-results-grid">
+          {metrics.map((item) => (
+            <div className="chem-metric-card" key={item.label}>
+              <span>{item.label}</span>
+              <strong>{item.value}{item.suffix}</strong>
+            </div>
+          ))}
+        </div>
+        <div className="chem-feedback-card">{chemMetrics.feedback}</div>
+        <div className="chem-chart-stack">
+          <MiniTrendChart title={c.chemChartVoltage} points={chemTrend} strokeClass="oxygen" valueKey="voltage" />
+          <MiniTrendChart title={c.chemChartCurrent} points={chemTrend} strokeClass="carbon" valueKey="current" />
+        </div>
+      </aside>
+
+      <div className="chemistry-core card-lite">
+        <div className="chem-toolbar">
+          <div className="chem-toolbar-group">
+            <span>{c.chemStepElectrodes}</span>
+            <div className="chem-chip-row">
+              {["Zn", "Cu", "Fe", "Ag", "Mg", "Ni"].map((metal) => (
+                <button key={`anode-${metal}`} type="button" className={`chem-chip ${chemSettings.anode === metal ? "active" : ""}`} onClick={() => pickOption("anode", metal)}>{metal}</button>
+              ))}
+            </div>
+            <div className="chem-chip-row secondary">
+              {["Zn", "Cu", "Fe", "Ag", "Mg", "Ni"].map((metal) => (
+                <button key={`cathode-${metal}`} type="button" className={`chem-chip ${chemSettings.cathode === metal ? "active" : ""}`} onClick={() => pickOption("cathode", metal)}>{metal}</button>
+              ))}
+            </div>
+          </div>
+
+          <div className="chem-speed-box">
+            <span>{c.chemSpeedLabel}</span>
+            <div className="bio-speed-actions">
+              {[1, 5, 10].map((speed) => <button key={speed} className={`bio-speed-btn ${chemSettings.timeSpeed === speed ? "active" : ""}`} type="button" onClick={() => setSpeed(speed)}>{speed}x</button>)}
+            </div>
+          </div>
+        </div>
+
+        <div className="chem-stage">
+          <div className="chem-direction-card left">
+            <strong>{c.chemDirectionTitle}</strong>
+            <span>{chemSettings.anode}</span>
+          </div>
+          <div className="chem-direction-card right">
+            <strong>{c.chemDirectionEnd}</strong>
+            <span>{chemSettings.cathode}</span>
+          </div>
+
+          <div className="chem-electron-flow">
+            <span className="chem-electron">e-</span>
+            <span className="chem-electron">e-</span>
+            <span className="chem-electron">e-</span>
+          </div>
+
+          <div className="chem-wire">
+            <div className={`chem-bulb ${chemMetrics.cellReady ? "on" : "off"} ${chemSettings.lampOn ? "" : "dim"}`}>
+              <div className="chem-bulb-glow"></div>
+            </div>
+            <div className="chem-voltmeter">{chemMetrics.voltage} V</div>
+          </div>
+
+          <div className="chem-beakers">
+            <div className="chem-beaker left">
+              <div className="chem-electrode">{chemSettings.anode}</div>
+              <div className="chem-liquid left"></div>
+              <div className="chem-solution-tag">{chemSettings.electrolyteLeft}</div>
+            </div>
+            <div className={`chem-salt-bridge ${chemSettings.saltBridge === "none" ? "off" : ""}`}>
+              <span>{chemSettings.saltBridge === "none" ? c.chemNoBridge : chemSettings.saltBridge}</span>
+              <div className="chem-ion-flow">
+                <span>K+</span>
+                <span>NO3-</span>
+              </div>
+            </div>
+            <div className="chem-beaker right">
+              <div className="chem-electrode copper">{chemSettings.cathode}</div>
+              <div className="chem-liquid right"></div>
+              <div className="chem-solution-tag">{chemSettings.electrolyteRight}</div>
+            </div>
+          </div>
+
+          <div className="chem-reaction-panel">
+            <div className="chem-half-reaction">
+              <strong>{c.chemAnodeLabel}</strong>
+              <span>{halfReactionLeft}</span>
+            </div>
+            <div className="chem-half-reaction">
+              <strong>{c.chemCathodeLabel}</strong>
+              <span>{halfReactionRight}</span>
+            </div>
+            <div className="chem-overall-reaction">{fullReaction}</div>
+          </div>
+        </div>
+
+        <div className="chem-story-grid">
+          <div className="chem-story-card">
+            <strong>{c.chemStoryLeft}</strong>
+            <span>{c.chemStoryLeftText}</span>
+          </div>
+          <div className="chem-story-card">
+            <strong>{c.chemStoryBridge}</strong>
+            <span>{c.chemStoryBridgeText}</span>
+          </div>
+          <div className="chem-story-card">
+            <strong>{c.chemStoryRight}</strong>
+            <span>{c.chemStoryRightText}</span>
+          </div>
+        </div>
+      </div>
+
+      <aside className="chem-tools-panel card-lite">
+        <div className="bio-panel-head">
+          <strong>{c.chemToolsTitle}</strong>
+          <button className="micro-btn secondary" type="button" onClick={resetChemistryExperiment}>{c.chemReset}</button>
+        </div>
+
+        <div className="chem-tool-group">
+          <div className="chem-tool-label">{c.chemLeftSolutionLabel}</div>
+          <div className="chem-tool-grid">
+            {["ZnSO4", "CuSO4", "AgNO3", "FeSO4", "HCl", "NaCl", "H2SO4", "MgSO4"].map((solution) => (
+              <button key={`left-${solution}`} type="button" className={`chem-tool-card ${chemSettings.electrolyteLeft === solution ? "active" : ""}`} onClick={() => pickOption("electrolyteLeft", solution)}>{solution}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="chem-tool-group">
+          <div className="chem-tool-label">{c.chemRightSolutionLabel}</div>
+          <div className="chem-tool-grid">
+            {["ZnSO4", "CuSO4", "AgNO3", "FeSO4", "HCl", "NaCl", "H2SO4", "MgSO4"].map((solution) => (
+              <button key={`right-${solution}`} type="button" className={`chem-tool-card ${chemSettings.electrolyteRight === solution ? "active" : ""}`} onClick={() => pickOption("electrolyteRight", solution)}>{solution}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="chem-tool-group">
+          <div className="chem-tool-label">{c.chemBridgeLabel}</div>
+          <div className="chem-tool-grid compact">
+            {[
+              { id: "KNO3", label: "KNO3" },
+              { id: "NaCl", label: "NaCl" },
+              { id: "KCl", label: "KCl" },
+              { id: "none", label: c.chemNoBridge }
+            ].map((bridge) => (
+              <button key={bridge.id} type="button" className={`chem-tool-card ${chemSettings.saltBridge === bridge.id ? "active" : ""}`} onClick={() => pickOption("saltBridge", bridge.id)}>{bridge.label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="chem-toggle-grid">
+          <button type="button" className={`chem-toggle-card ${chemSettings.connected ? "active" : ""}`} onClick={() => pickOption("connected", !chemSettings.connected)}>
+            <strong>{c.chemWireToggle}</strong>
+            <span>{chemSettings.connected ? c.bioOn : c.bioOff}</span>
+          </button>
+          <button type="button" className={`chem-toggle-card ${chemSettings.lampOn ? "active" : ""}`} onClick={() => pickOption("lampOn", !chemSettings.lampOn)}>
+            <strong>{c.chemLampToggle}</strong>
+            <span>{chemSettings.lampOn ? c.bioOn : c.bioOff}</span>
+          </button>
+        </div>
+      </aside>
+    </div>
+  );
+};
+
+const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dragging, setDragging, handleStagePointer, coilLoopOffsets, bulbPower, magnetSvgX, inducedSignal, coilTurns, magnetX, setCoilTurns, updateMagnetPosition, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, chemSettings, setChemSettings, chemMetrics, chemTrend, resetChemistryExperiment }) => {
+  const materials = Array.isArray(c.materials) ? c.materials : [];
+  const currentMaterial = materials.find((material) => material.id === activeMaterial) || materials[0];
+  if (!currentMaterial) return null;
+  const isPhysics = currentMaterial.id === "physics";
+  const isChemistry = currentMaterial.id === "chemistry";
+  const isBiology = currentMaterial.id === "biology";
+
+  return (
+    <section id="experience">
+      <div className="section-head"><div><h2>{c.experienceTitle}</h2><p>{c.experienceText}</p></div></div>
+      <div className="materials-shell">
+        <div className="materials-tabs">
+          {materials.map((material) => (
+            <button
+              key={material.id}
+              type="button"
+              className={`materials-tab ${material.id === currentMaterial.id ? "active" : ""}`}
+              onClick={() => setActiveMaterial(material.id)}
+            >
+              {material.label}
+            </button>
+          ))}
+        </div>
+        <div className="materials-subtitle">{currentMaterial.note}</div>
+      </div>
+      <div className="lab-experiment">
+        <div className="lab-experiment-head"><div><h3>{currentMaterial.labTitle}</h3><p><strong>{currentMaterial.labName}</strong> - {currentMaterial.labText}</p></div><div className="lab-tag">{currentMaterial.tag}</div></div>
+        {isPhysics ? (
+          <div className="induction-grid">
+            <ExperimentScene stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} />
+            <div className="induction-panel">
+              <div className="meter-card"><div className="meter-head"><strong>{c.outputLabel}</strong><span className="meter-value">{inducedSignal}% - {c.outputUnit}</span></div><div className="meter-track"><div className="meter-fill" style={{ width: `${inducedSignal}%` }}></div></div><div className="meter-note">{c.physicsHint}</div></div>
+              <div className="control-card">
+                <div className="control-row"><label><span>{c.turnsLabel}</span><strong>{coilTurns}</strong></label><input type="range" min="6" max="18" value={coilTurns} onChange={(event) => setCoilTurns(Number(event.target.value))} /></div>
+                <div className="control-row"><label><span>{c.magnetLabel}</span><strong>{Math.round(magnetX * 100)}%</strong></label><input type="range" min="8" max="92" value={Math.round(magnetX * 100)} onChange={(event) => updateMagnetPosition(Number(event.target.value) / 100)} /></div>
+                <div className="control-actions"><button className="micro-btn" type="button" onClick={() => updateMagnetPosition(0.5)}>{c.insertMagnet}</button><button className="micro-btn secondary" type="button" onClick={() => updateMagnetPosition(0.16)}>{c.resetMagnet}</button></div>
+                <div className="control-note">{currentMaterial.labText}</div>
+              </div>
+            </div>
+          </div>
+        ) : isChemistry ? (
+          <ChemistrySimulation c={c} chemSettings={chemSettings} setChemSettings={setChemSettings} chemMetrics={chemMetrics} chemTrend={chemTrend} resetChemistryExperiment={resetChemistryExperiment} />
+        ) : isBiology ? (
+          <BiologySimulation c={c} currentMaterial={currentMaterial} bioSettings={bioSettings} setBioSettings={setBioSettings} bioMetrics={bioMetrics} bioTrend={bioTrend} resetBiologyExperiment={resetBiologyExperiment} />
+        ) : (
+          <div className="material-placeholder">
+            <strong>{currentMaterial.emptyTitle}</strong>
+            <p>{currentMaterial.emptyText}</p>
+          </div>
+        )}
+        <div className="experiment-list">{currentMaterial.experiments.map((item, index) => <div className={`experiment-item ${index === 0 ? "active" : ""}`} key={item.title}><strong>{item.title}</strong><span>{item.text}</span></div>)}</div>
+      </div>
+    </section>
+  );
+};
+
+const FAQSection = ({ c }) => {
+  const [openIndex, setOpenIndex] = useState(0);
+
+  return (
+    <section id="faq">
+      <div className="section-head"><div><h2>{c.faqTitle}</h2><p>{c.faqText}</p></div></div>
+      <div className="faq-list">
+        {c.faqItems.map((item, index) => {
+          const isOpen = index === openIndex;
+          return (
+            <article className={`faq-item ${isOpen ? "open" : ""}`} key={item.question}>
+              <button className="faq-question" type="button" onClick={() => setOpenIndex(isOpen ? -1 : index)}>
+                <span>{item.question}</span>
+                <span className={`faq-chevron ${isOpen ? "open" : ""}`}>v</span>
+              </button>
+              {isOpen ? <div className="faq-answer"><p>{item.answer}</p></div> : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
 
 const FooterSection = ({ c }) => (
   <footer className="footer" id="contact">
     <div className="footer-summary">{c.footer.map((item) => <div key={item}>{item}</div>)}</div>
-    <div className="contact-card"><strong>{c.contactTitle}</strong><div>{c.contactNameLabel}: {c.contactName}</div><div>{c.contactPhoneLabel}: {c.contactPhone}</div><div>{c.contactLinkedInLabel}: <a href="https://www.linkedin.com/in/salma-moath-/?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3B6PS4y5SvTTy8eCqiFVwt1g%3D%3D" target="_blank" rel="noreferrer">linkedin.com/in/salma-moath-</a></div></div>
+    <div className="contact-cards">
+      <div className="contact-card"><strong>{c.contactTitle}</strong><div>{c.contactNameLabel}: {c.contactName}</div><div>{c.contactPhoneLabel}: {c.contactPhone}</div><div>{c.contactLinkedInLabel}: <a href="https://www.linkedin.com/in/salma-moath-/?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3B6PS4y5SvTTy8eCqiFVwt1g%3D%3D" target="_blank" rel="noreferrer">linkedin.com/in/salma-moath-</a></div></div>
+      <div className="contact-card"><strong>{c.contactTitle}</strong><div>{c.contactNameLabel}: {c.secondaryContactName}</div><div>{c.contactPhoneLabel}: {c.secondaryContactPhone}</div></div>
+    </div>
   </footer>
 );
 
@@ -206,9 +579,9 @@ const ChatWidget = ({ c, chatOpen, setChatOpen }) => (
   <div className="ai-chat-widget">
     {chatOpen ? (
       <div className="ai-chat-panel">
-        <div className="ai-chat-head"><div className="ai-chat-brand"><div className="ai-chat-avatar"><OrbitMark /></div><div><div className="ai-chat-name">{c.chatName}</div><div className="ai-chat-status">{c.chatStatus}</div></div></div><button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label="Close chat" type="button">×</button></div>
+        <div className="ai-chat-head"><div className="ai-chat-brand"><div className="ai-chat-avatar"><OrbitMark /></div><div><div className="ai-chat-name">{c.chatName}</div><div className="ai-chat-status">{c.chatStatus}</div></div></div><button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label="Close chat" type="button">x</button></div>
         <div className="ai-chat-bubble">{c.chatMessage}</div><div className="ai-chat-section-label">{c.chatLabel}</div>
-        <div className="ai-chat-actions"><button className="ai-chat-action" type="button"><span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">›</span></button><button className="ai-chat-action" type="button"><span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">›</span></button></div>
+        <div className="ai-chat-actions"><button className="ai-chat-action" type="button"><span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">{">"}</span></button><button className="ai-chat-action" type="button"><span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">{">"}</span></button></div>
         <div className="ai-chat-input"><div className="ai-chat-input-shell"><span className="ai-chat-placeholder">{c.chatPlaceholder}</span><button className="ai-chat-send" type="button" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></button></div></div>
       </div>
     ) : (
@@ -217,4 +590,67 @@ const ChatWidget = ({ c, chatOpen, setChatOpen }) => (
   </div>
 );
 
-window.NawaComponents = { Header, HeroSection, FeaturesSection, ExperimentSection, CTASection, FooterSection, ChatWidget };
+const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, setLoginForm, onClose, onSubmit }) => {
+  if (!loginOpen) return null;
+
+  const roles = [
+    { id: "teacher", title: c.loginRoles.teacher.title, text: c.loginRoles.teacher.text },
+    { id: "student", title: c.loginRoles.student.title, text: c.loginRoles.student.text },
+    { id: "guest", title: c.loginRoles.guest.title, text: c.loginRoles.guest.text }
+  ];
+
+  return (
+    <div className="login-overlay" role="dialog" aria-modal="true" aria-labelledby="login-title">
+      <div className="login-shell">
+        <button className="login-close" type="button" onClick={onClose} aria-label={c.loginClose}>x</button>
+        <div className="login-copy">
+          <div className="eyebrow login-eyebrow"><span>+</span><span>{c.loginEyebrow}</span></div>
+          <h2 id="login-title">{c.loginTitle}</h2>
+          <p>{c.loginText}</p>
+        </div>
+        <div className="login-role-grid">
+          {roles.map((role) => (
+            <button
+              key={role.id}
+              type="button"
+              className={`login-role-card ${selectedRole === role.id ? "active" : ""}`}
+              onClick={() => setSelectedRole(role.id)}
+            >
+              <strong>{role.title}</strong>
+              <span>{role.text}</span>
+            </button>
+          ))}
+        </div>
+        <div className="login-form-card">
+          <div className="login-form-head">
+            <strong>{c.loginRoles[selectedRole].title}</strong>
+            <span>{selectedRole === "guest" ? c.loginGuestNote : c.loginFormNote}</span>
+          </div>
+          <div className="login-form-grid">
+            <label className="login-field">
+              <span>{c.loginNameLabel}</span>
+              <input type="text" value={loginForm.name} onChange={(event) => setLoginForm({ ...loginForm, name: event.target.value })} placeholder={c.loginNamePlaceholder} />
+            </label>
+            {selectedRole !== "guest" ? (
+              <label className="login-field">
+                <span>{selectedRole === "teacher" ? c.loginTeacherIdLabel : c.loginStudentIdLabel}</span>
+                <input type="text" value={loginForm.identifier} onChange={(event) => setLoginForm({ ...loginForm, identifier: event.target.value })} placeholder={selectedRole === "teacher" ? c.loginTeacherIdPlaceholder : c.loginStudentIdPlaceholder} />
+              </label>
+            ) : null}
+            <label className="login-field">
+              <span>{selectedRole === "guest" ? c.loginGuestLabel : c.loginEmailLabel}</span>
+              <input type="text" value={loginForm.contact} onChange={(event) => setLoginForm({ ...loginForm, contact: event.target.value })} placeholder={selectedRole === "guest" ? c.loginGuestPlaceholder : c.loginEmailPlaceholder} />
+            </label>
+          </div>
+          <div className="login-actions">
+            <button className="btn btn-secondary" type="button" onClick={onClose}>{c.loginCancel}</button>
+            <button className="btn btn-primary" type="button" onClick={onSubmit}>{c.loginContinue}</button>
+          </div>
+          <div className="login-helper">{selectedRole === "guest" ? c.loginGuestHelper : c.loginMemberHelper}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+window.NawaComponents = { Header, HeroSection, FeaturesSection, ExperimentSection, FAQSection, FooterSection, ChatWidget, LoginPortal };
