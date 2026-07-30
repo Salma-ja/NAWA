@@ -45,11 +45,11 @@ function App() {
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = isArabic ? "rtl" : "ltr";
-    document.title = isArabic ? "مختبر نوى" : "NAWA LAB";
+    document.title = isArabic ? "\u0645\u062e\u062a\u0628\u0631 \u0646\u0648\u0627\u0629" : "NAWA LAB";
   }, [language, isArabic]);
 
   const rotation = useMemo(() => ({ transform: "rotate(102deg) scale(1.17)" }), []);
-  const visibleTurns = useMemo(() => Array.from({ length: Math.max(4, Math.min(8, Math.round(coilTurns / 2))) }), [coilTurns]);
+  const visibleTurns = useMemo(() => Array.from({ length: Math.max(2, Math.min(9, Math.round(coilTurns / 2) + 1)) }), [coilTurns]);
   const coilLoopOffsets = useMemo(() => visibleTurns.map((_, index) => 226 + index * 11), [visibleTurns]);
   const bulbPower = Math.max(0, Math.min(1, inducedSignal / 100));
   const magnetSvgX = 152 + magnetX * 188;
@@ -107,6 +107,14 @@ function App() {
       Ag: 0.64,
       Ni: 0.58
     };
+    const ionLabels = {
+      Zn: "Zn2+",
+      Fe: "Fe2+",
+      Mg: "Mg2+",
+      Cu: "Cu2+",
+      Ag: "Ag+",
+      Ni: "Ni2+"
+    };
     const solutionStrength = {
       ZnSO4: 1,
       CuSO4: 1,
@@ -138,6 +146,10 @@ function App() {
     const ionsMoved = Math.round(current * 7.2);
     const cellReady = chemSettings.connected && chemSettings.saltBridge !== "none" && chemSettings.anode !== chemSettings.cathode;
     const status = voltage >= 1.2 ? "high" : voltage >= 0.6 ? "medium" : "low";
+    const zincMass = Number((0.76 + Math.max(0, (1.2 - voltage) * 0.28)).toFixed(2));
+    const copperMass = Number((1.24 + voltage * 0.24).toFixed(2));
+    const znConcentration = Number((0.98 + voltage * 0.08).toFixed(2));
+    const cuConcentration = Number((0.92 - voltage * 0.12).toFixed(2));
     const feedback = !chemSettings.connected
       ? c.chemFeedbackDisconnected
       : chemSettings.saltBridge === "none"
@@ -153,7 +165,13 @@ function App() {
       ionsMoved,
       cellReady,
       status,
-      feedback
+      feedback,
+      zincMass,
+      copperMass,
+      znConcentration,
+      cuConcentration,
+      anodeIon: ionLabels[chemSettings.anode] || `${chemSettings.anode}2+`,
+      cathodeIon: ionLabels[chemSettings.cathode] || `${chemSettings.cathode}2+`
     };
   }, [chemSettings, c]);
 
@@ -266,8 +284,8 @@ function App() {
         <div className="container">
           <Header c={c} isArabic={isArabic} language={language} theme={theme} onToggleLanguage={() => setLanguage(language === "ar" ? "en" : "ar")} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenLogin={handleOpenLogin} activeProfile={activeProfileLabel} />
           <HeroSection c={c} rotation={rotation} onOpenLogin={handleOpenLogin} />
-          <FeaturesSection c={c} />
           <ExperimentSection c={c} activeMaterial={activeMaterial} setActiveMaterial={setActiveMaterial} stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} inducedSignal={inducedSignal} coilTurns={coilTurns} magnetX={magnetX} setCoilTurns={setCoilTurns} updateMagnetPosition={updateMagnetPosition} bioSettings={bioSettings} setBioSettings={setBioSettings} bioMetrics={bioMetrics} bioTrend={bioTrend} resetBiologyExperiment={resetBiologyExperiment} chemSettings={chemSettings} setChemSettings={setChemSettings} chemMetrics={chemMetrics} chemTrend={chemTrend} resetChemistryExperiment={resetChemistryExperiment} />
+          <FeaturesSection c={c} />
           <FAQSection c={c} />
           <FooterSection c={c} />
           <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} />
