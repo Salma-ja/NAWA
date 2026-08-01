@@ -306,3 +306,59 @@ Object.assign(window.NAWA_CONTENT.ar, {
     }
   ]
 });
+
+Object.assign(window.NAWA_CONTENT.en, {
+  teacherDashboardButton: "Teacher Dashboard",
+  teacherDashboardTitle: "Teacher dashboard",
+  teacherDashboardText: "A focused control space for teachers to monitor class activity and jump into assessments.",
+  teacherDashboardWelcome: "Only teacher accounts can access this dashboard. From here you can review engagement and launch a quiz quickly.",
+  teacherOnlyBadge: "Teacher only",
+  teacherDashboardCards: [
+    { value: "24", title: "Active students", text: "Students currently exploring experiments or reviewing concepts." },
+    { value: "08", title: "Assigned quizzes", text: "Quiz sets prepared for current classes and revision sessions." },
+    { value: "91%", title: "Completion trend", text: "Average experiment completion rate across the latest class activity." }
+  ],
+  openQuizButton: "Open Quiz",
+  backToExperiments: "Back to experiments",
+  quizTitle: "Quiz page",
+  quizText: "Answer the quick questions below to check understanding after the experiment.",
+  quizReadyTitle: "Assessment is ready",
+  quizScoreLabel: "Score",
+  quizCompletedLabel: "Quiz completed",
+  quizForLabel: "Quiz for",
+  quizDefaultMaterial: "General science",
+  loginEmailLabel: "Email",
+  loginEmailPlaceholder: "name@school.edu",
+  loginPasswordLabel: "Password",
+  loginPasswordPlaceholder: "Enter your password",
+  loginFormNote: "Use your school email and password to continue.",
+  loginMemberHelper: "Teachers and students sign in with their email and password to continue to their space."
+});
+
+Object.assign(window.NAWA_CONTENT.ar, {
+  teacherDashboardButton: "لوحة المعلم",
+  teacherDashboardTitle: "لوحة المعلم",
+  teacherDashboardText: "مساحة خاصة بالمعلم لمتابعة النشاط والانتقال السريع إلى التقييمات.",
+  teacherDashboardWelcome: "هذه اللوحة متاحة فقط لحسابات المعلمين، ومنها يمكن متابعة التفاعل وفتح اختبار بسرعة.",
+  teacherOnlyBadge: "للمعلم فقط",
+  teacherDashboardCards: [
+    { value: "24", title: "طلاب نشطون", text: "عدد الطلاب الذين يتفاعلون الآن مع التجارب أو يراجعون المفاهيم." },
+    { value: "08", title: "اختبارات مخصصة", text: "اختبارات جاهزة للحصص الحالية والمراجعة." },
+    { value: "91%", title: "نسبة الإنجاز", text: "متوسط إنجاز التجارب في آخر نشاط صفّي." }
+  ],
+  openQuizButton: "افتح الاختبار",
+  backToExperiments: "الرجوع إلى التجارب",
+  quizTitle: "صفحة الاختبار",
+  quizText: "أجب عن الأسئلة السريعة التالية لقياس الفهم بعد إنهاء التجربة.",
+  quizReadyTitle: "الاختبار جاهز",
+  quizScoreLabel: "النتيجة",
+  quizCompletedLabel: "اكتمل الاختبار",
+  quizForLabel: "اختبار خاص بـ",
+  quizDefaultMaterial: "علوم عامة",
+  loginEmailLabel: "البريد الإلكتروني",
+  loginEmailPlaceholder: "name@school.edu",
+  loginPasswordLabel: "كلمة المرور",
+  loginPasswordPlaceholder: "أدخل كلمة المرور",
+  loginFormNote: "استخدم البريد الإلكتروني وكلمة المرور للمتابعة.",
+  loginMemberHelper: "المعلم والطالب يسجلان الدخول باستخدام البريد الإلكتروني وكلمة المرور."
+});

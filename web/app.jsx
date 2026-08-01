@@ -1,6 +1,6 @@
 const { useEffect, useMemo, useRef, useState } = React;
 const CONTENT = window.NAWA_CONTENT;
-const { Header, HeroSection, FeaturesSection, ExperimentSection, FAQSection, FooterSection, ChatWidget, LoginPortal } = window.NawaComponents;
+const { Header, HeroSection, FeaturesSection, ExperimentSection, FAQSection, FooterSection, ChatWidget, LoginPortal, TeacherDashboard, QuizPage } = window.NawaComponents;
 
 function App() {
   const [language, setLanguage] = useState("ar");
@@ -9,8 +9,10 @@ function App() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState("student");
   const [activeProfile, setActiveProfile] = useState(null);
+  const [currentView, setCurrentView] = useState("home");
+  const [quizContext, setQuizContext] = useState(null);
   const [activeMaterial, setActiveMaterial] = useState("physics");
-  const [loginForm, setLoginForm] = useState({ name: "", identifier: "", contact: "" });
+  const [loginForm, setLoginForm] = useState({ email: "", password: "", purpose: "" });
   const [chemSettings, setChemSettings] = useState({
     anode: "Zn",
     cathode: "Cu",
@@ -40,6 +42,7 @@ function App() {
 
   const c = CONTENT[language];
   const isArabic = language === "ar";
+  const isTeacher = activeProfile?.role === "teacher";
   const activeProfileLabel = activeProfile ? `${c.loginRoles[activeProfile.role].title}: ${activeProfile.name}` : "";
 
   useEffect(() => {
@@ -241,12 +244,27 @@ function App() {
   };
 
   const handleSubmitLogin = () => {
-    const fallbackName = c.loginRoles[selectedRole].title;
+    const fallbackName = selectedRole === "guest"
+      ? c.loginRoles[selectedRole].title
+      : (loginForm.email.trim().split("@")[0] || c.loginRoles[selectedRole].title);
     setActiveProfile({
       role: selectedRole,
-      name: loginForm.name.trim() || fallbackName
+      name: fallbackName
     });
+    setCurrentView("home");
     setLoginOpen(false);
+  };
+
+  const handleOpenDashboard = () => {
+    if (!isTeacher) return;
+    setCurrentView("dashboard");
+  };
+
+  const handleOpenHome = () => setCurrentView("home");
+
+  const handleOpenQuiz = (payload) => {
+    setQuizContext(payload);
+    setCurrentView("quiz");
   };
 
   const resetBiologyExperiment = () => {
@@ -282,12 +300,20 @@ function App() {
       <div className="orb three"></div>
       <div className="shell">
         <div className="container">
-          <Header c={c} isArabic={isArabic} language={language} theme={theme} onToggleLanguage={() => setLanguage(language === "ar" ? "en" : "ar")} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenLogin={handleOpenLogin} activeProfile={activeProfileLabel} />
-          <HeroSection c={c} rotation={rotation} onOpenLogin={handleOpenLogin} />
-          <ExperimentSection c={c} activeMaterial={activeMaterial} setActiveMaterial={setActiveMaterial} stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} inducedSignal={inducedSignal} coilTurns={coilTurns} magnetX={magnetX} setCoilTurns={setCoilTurns} updateMagnetPosition={updateMagnetPosition} bioSettings={bioSettings} setBioSettings={setBioSettings} bioMetrics={bioMetrics} bioTrend={bioTrend} resetBiologyExperiment={resetBiologyExperiment} chemSettings={chemSettings} setChemSettings={setChemSettings} chemMetrics={chemMetrics} chemTrend={chemTrend} resetChemistryExperiment={resetChemistryExperiment} />
-          <FeaturesSection c={c} />
-          <FAQSection c={c} />
-          <FooterSection c={c} />
+          <Header c={c} isArabic={isArabic} language={language} theme={theme} onToggleLanguage={() => setLanguage(language === "ar" ? "en" : "ar")} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenLogin={handleOpenLogin} activeProfile={activeProfileLabel} onOpenDashboard={handleOpenDashboard} isTeacher={isTeacher} />
+          {currentView === "dashboard" ? (
+            <TeacherDashboard c={c} activeProfile={activeProfile} onBack={handleOpenHome} onOpenQuiz={() => handleOpenQuiz(null)} />
+          ) : currentView === "quiz" ? (
+            <QuizPage c={c} quizContext={quizContext} onBack={handleOpenHome} />
+          ) : (
+            <>
+              <HeroSection c={c} rotation={rotation} onOpenLogin={handleOpenLogin} />
+              <ExperimentSection c={c} activeMaterial={activeMaterial} setActiveMaterial={setActiveMaterial} stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} inducedSignal={inducedSignal} coilTurns={coilTurns} magnetX={magnetX} setCoilTurns={setCoilTurns} updateMagnetPosition={updateMagnetPosition} bioSettings={bioSettings} setBioSettings={setBioSettings} bioMetrics={bioMetrics} bioTrend={bioTrend} resetBiologyExperiment={resetBiologyExperiment} chemSettings={chemSettings} setChemSettings={setChemSettings} chemMetrics={chemMetrics} chemTrend={chemTrend} resetChemistryExperiment={resetChemistryExperiment} onOpenQuiz={handleOpenQuiz} />
+              <FeaturesSection c={c} />
+              <FAQSection c={c} />
+              <FooterSection c={c} />
+            </>
+          )}
           <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} />
           <LoginPortal c={c} loginOpen={loginOpen} selectedRole={selectedRole} setSelectedRole={setSelectedRole} loginForm={loginForm} setLoginForm={setLoginForm} onClose={handleCloseLogin} onSubmit={handleSubmitLogin} />
         </div>

@@ -5903,6 +5903,154 @@
       font-size: 12px;
     }
 
+    .lab-top-actions,
+    .teacher-dashboard-actions,
+    .quiz-top-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .teacher-dashboard,
+    .quiz-page {
+      padding: 28px 0 56px;
+    }
+
+    .teacher-dashboard-shell,
+    .quiz-shell {
+      display: grid;
+      gap: 18px;
+    }
+
+    .teacher-dashboard-hero,
+    .quiz-summary-card,
+    .quiz-question-card,
+    .teacher-dashboard-card,
+    .quiz-result-banner {
+      border-radius: 28px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      box-shadow: var(--shadow);
+    }
+
+    .teacher-dashboard-hero,
+    .quiz-summary-card {
+      padding: 24px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: center;
+      background: linear-gradient(135deg, rgba(26,111,232,0.16), rgba(108,63,232,0.12)), rgba(255,255,255,0.03);
+    }
+
+    .teacher-dashboard-hero h3,
+    .quiz-summary-card h3 {
+      margin: 12px 0 10px;
+      font-size: 30px;
+    }
+
+    .teacher-dashboard-hero p,
+    .quiz-summary-card p,
+    .teacher-dashboard-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .teacher-badge,
+    .quiz-score-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(96, 223, 255, 0.08);
+      border: 1px solid rgba(96, 223, 255, 0.18);
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .teacher-dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .teacher-dashboard-card {
+      padding: 22px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .teacher-dashboard-card strong {
+      font-size: 34px;
+      color: #ffffff;
+    }
+
+    .teacher-dashboard-card h4,
+    .quiz-question-card h4 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .quiz-question-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .quiz-question-card {
+      padding: 22px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .quiz-question-number {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .quiz-options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .quiz-option {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(255,255,255,0.03);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      text-align: start;
+      transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .quiz-option:hover,
+    .quiz-option.active {
+      transform: translateY(-2px);
+      border-color: rgba(91, 163, 255, 0.34);
+      background: linear-gradient(180deg, rgba(26,111,232,0.14), rgba(108,63,232,0.1));
+    }
+
+    .quiz-result-banner {
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
     .app.rtl {
       direction: rtl;
     }
@@ -6020,13 +6168,22 @@
     .app.rtl .login-role-card,
     .app.rtl .login-field,
     .app.rtl .login-copy,
-    .app.rtl .login-form-card {
+    .app.rtl .login-form-card,
+    .app.rtl .teacher-dashboard-hero,
+    .app.rtl .teacher-dashboard-card,
+    .app.rtl .quiz-summary-card,
+    .app.rtl .quiz-question-card,
+    .app.rtl .quiz-option,
+    .app.rtl .quiz-result-banner {
       text-align: right;
     }
 
     .app.rtl .lab-head-row,
     .app.rtl .lab-head-chips,
-    .app.rtl .experiment-browser-bar {
+    .app.rtl .experiment-browser-bar,
+    .app.rtl .lab-top-actions,
+    .app.rtl .teacher-dashboard-actions,
+    .app.rtl .quiz-top-actions {
       flex-direction: row-reverse;
     }
 
@@ -6378,7 +6535,9 @@
       .chem-toggle-grid,
       .chem-story-grid,
       .chem-results-grid,
-      .experiment-picker-grid { grid-template-columns: 1fr; }
+      .experiment-picker-grid,
+      .teacher-dashboard-grid,
+      .quiz-options { grid-template-columns: 1fr; }
       .chemv2-bottom-grid,
       .chemv2-micro-cards,
       .chemv2-stepbar { grid-template-columns: 1fr; }
@@ -6387,6 +6546,9 @@
       .login-role-grid,
       .login-form-grid { grid-template-columns: 1fr; }
       .login-shell { padding: 22px 18px; }
+      .teacher-dashboard-hero,
+      .quiz-summary-card,
+      .quiz-result-banner { display: grid; }
     }
 
     @media (max-width: 640px) {

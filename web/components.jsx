@@ -133,7 +133,7 @@ const HeroScienceGlyph = ({ type }) => {
   );
 };
 
-const Header = ({ c, language, onToggleLanguage, onOpenLogin, activeProfile }) => (
+const Header = ({ c, language, onToggleLanguage, onOpenLogin, activeProfile, onOpenDashboard, isTeacher }) => (
   <header className="nav">
     <a className="brand" href="#home">
       <OrbitMark />
@@ -156,6 +156,7 @@ const Header = ({ c, language, onToggleLanguage, onOpenLogin, activeProfile }) =
         <span>{language === "ar" ? "AR" : "EN"}</span>
       </button>
       {activeProfile ? <div className="profile-pill">{activeProfile}</div> : null}
+      {isTeacher ? <button className="btn btn-secondary" type="button" onClick={onOpenDashboard}>{c.teacherDashboardButton}</button> : null}
       <button className="btn btn-primary" type="button" onClick={onOpenLogin}>{c.launchDemo}</button>
     </div>
   </header>
@@ -1826,7 +1827,7 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
   );
 };
 
-const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dragging, setDragging, handleStagePointer, coilLoopOffsets, bulbPower, magnetSvgX, inducedSignal, coilTurns, magnetX, setCoilTurns, updateMagnetPosition, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, chemSettings, setChemSettings, chemMetrics, chemTrend, resetChemistryExperiment }) => {
+const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dragging, setDragging, handleStagePointer, coilLoopOffsets, bulbPower, magnetSvgX, inducedSignal, coilTurns, magnetX, setCoilTurns, updateMagnetPosition, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, chemSettings, setChemSettings, chemMetrics, chemTrend, resetChemistryExperiment, onOpenQuiz }) => {
   const materials = Array.isArray(c.materials) ? c.materials : [];
   const currentMaterial = materials.find((material) => material.id === activeMaterial) || materials[0];
   const [selectedExperimentIndex, setSelectedExperimentIndex] = useState(null);
@@ -2045,6 +2046,19 @@ const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dra
             </div>
             <p><strong>{experimentLabName}</strong> - {experimentLabText}</p>
           </div>
+          <div className="lab-top-actions">
+            <button
+              className="micro-btn"
+              type="button"
+              onClick={() => onOpenQuiz({
+                materialId: currentMaterial.id,
+                materialLabel: currentMaterial.label,
+                experimentTitle: selectedExperiment.title
+              })}
+            >
+              {c.openQuizButton}
+            </button>
+          </div>
         </div>
         {isPhysicsInduction ? (
           <div className="induction-grid">
@@ -2182,19 +2196,21 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
             <span>{selectedRole === "guest" ? c.loginGuestNote : c.loginFormNote}</span>
           </div>
           <div className={`login-form-grid ${selectedRole === "guest" ? "guest" : "member"}`}>
-            <label className="login-field">
-              <span>{c.loginNameLabel}</span>
-              <input type="text" value={loginForm.name} onChange={(event) => setLoginForm({ ...loginForm, name: event.target.value })} placeholder={c.loginNamePlaceholder} />
-            </label>
             {selectedRole !== "guest" ? (
-              <label className="login-field">
-                <span>{c.loginEmailLabel}</span>
-                <input type="text" value={loginForm.contact} onChange={(event) => setLoginForm({ ...loginForm, contact: event.target.value })} placeholder={c.loginEmailPlaceholder} />
-              </label>
+              <>
+                <label className="login-field">
+                  <span>{c.loginEmailLabel}</span>
+                  <input type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
+                </label>
+                <label className="login-field">
+                  <span>{c.loginPasswordLabel}</span>
+                  <input type="password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
+                </label>
+              </>
             ) : (
               <label className="login-field">
                 <span>{c.loginGuestLabel}</span>
-                <input type="text" value={loginForm.contact} onChange={(event) => setLoginForm({ ...loginForm, contact: event.target.value })} placeholder={c.loginGuestPlaceholder} />
+                <input type="text" value={loginForm.purpose} onChange={(event) => setLoginForm({ ...loginForm, purpose: event.target.value })} placeholder={c.loginGuestPlaceholder} />
               </label>
             )}
           </div>
@@ -2209,4 +2225,153 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
   );
 };
 
-window.NawaComponents = { Header, HeroSection, FeaturesSection, ExperimentSection, FAQSection, FooterSection, ChatWidget, LoginPortal };
+const TeacherDashboard = ({ c, activeProfile, onBack, onOpenQuiz }) => {
+  const cards = c.teacherDashboardCards || [];
+
+  return (
+    <section className="teacher-dashboard" id="teacher-dashboard">
+      <div className="section-head">
+        <div>
+          <h2>{c.teacherDashboardTitle}</h2>
+          <p>{c.teacherDashboardText}</p>
+        </div>
+      </div>
+      <div className="teacher-dashboard-shell">
+        <div className="teacher-dashboard-hero">
+          <div>
+            <span className="teacher-badge">{c.teacherOnlyBadge}</span>
+            <h3>{activeProfile?.name || c.loginRoles.teacher.title}</h3>
+            <p>{c.teacherDashboardWelcome}</p>
+          </div>
+          <div className="teacher-dashboard-actions">
+            <button className="btn btn-secondary" type="button" onClick={onBack}>{c.backToExperiments}</button>
+            <button className="btn btn-primary" type="button" onClick={onOpenQuiz}>{c.openQuizButton}</button>
+          </div>
+        </div>
+        <div className="teacher-dashboard-grid">
+          {cards.map((card) => (
+            <article className="teacher-dashboard-card" key={card.title}>
+              <strong>{card.value}</strong>
+              <h4>{card.title}</h4>
+              <p>{card.text}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const QUIZ_BANK = {
+  physics: [
+    {
+      promptAr: "ماذا يحدث للإشارة المستحثة عندما تزيد عدد لفات الملف؟",
+      promptEn: "What happens to the induced signal when the number of coil turns increases?",
+      optionsAr: ["تزداد", "تختفي", "تبقى ثابتة"],
+      optionsEn: ["It increases", "It disappears", "It stays constant"],
+      answer: 0
+    },
+    {
+      promptAr: "في التصادم داخل نظام مغلق، أي كمية تبقى محفوظة دائمًا؟",
+      promptEn: "In a closed-system collision, which quantity stays conserved?",
+      optionsAr: ["الزخم", "اللون", "درجة الحرارة فقط"],
+      optionsEn: ["Momentum", "Color", "Temperature only"],
+      answer: 0
+    }
+  ],
+  chemistry: [
+    {
+      promptAr: "ما وظيفة الجسر الملحي في الخلية الغلفانية؟",
+      promptEn: "What is the role of the salt bridge in a galvanic cell?",
+      optionsAr: ["يحافظ على توازن الشحنات", "يزيد لون المحلول", "يوقف حركة الأيونات"],
+      optionsEn: ["Maintains charge balance", "Changes solution color", "Stops ion movement"],
+      answer: 0
+    },
+    {
+      promptAr: "متى تكون الخلية الغلفانية أقوى عادة؟",
+      promptEn: "When is a galvanic cell usually stronger?",
+      optionsAr: ["عند وجود قطبين مختلفين", "عند فصل الأسلاك", "عند غياب الجسر الملحي"],
+      optionsEn: ["With different electrodes", "When wires are disconnected", "Without a salt bridge"],
+      answer: 0
+    }
+  ],
+  biology: [
+    {
+      promptAr: "أي عامل يدعم عملية البناء الضوئي مباشرة؟",
+      promptEn: "Which factor directly supports photosynthesis?",
+      optionsAr: ["الضوء", "الظلام", "انعدام الماء"],
+      optionsEn: ["Light", "Darkness", "No water"],
+      answer: 0
+    },
+    {
+      promptAr: "في تضاعف DNA، أي قاعدة ترتبط مع A؟",
+      promptEn: "During DNA replication, which base pairs with A?",
+      optionsAr: ["T", "C", "G"],
+      optionsEn: ["T", "C", "G"],
+      answer: 0
+    }
+  ]
+};
+
+const QuizPage = ({ c, quizContext, onBack }) => {
+  const isArabic = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
+  const materialId = quizContext?.materialId || "physics";
+  const questions = QUIZ_BANK[materialId] || QUIZ_BANK.physics;
+  const [answers, setAnswers] = useState({});
+  const score = questions.reduce((total, question, index) => total + (answers[index] === question.answer ? 1 : 0), 0);
+  const completed = Object.keys(answers).length === questions.length;
+
+  return (
+    <section className="quiz-page" id="quiz-page">
+      <div className="section-head">
+        <div>
+          <h2>{c.quizTitle}</h2>
+          <p>{quizContext?.experimentTitle ? `${c.quizForLabel} ${quizContext.experimentTitle}` : c.quizText}</p>
+        </div>
+      </div>
+      <div className="quiz-shell">
+        <div className="quiz-summary-card">
+          <span className="teacher-badge">{quizContext?.materialLabel || c.quizDefaultMaterial}</span>
+          <h3>{c.quizReadyTitle}</h3>
+          <p>{c.quizText}</p>
+          <div className="quiz-top-actions">
+            <button className="btn btn-secondary" type="button" onClick={onBack}>{c.backToExperiments}</button>
+            <div className="quiz-score-pill">{c.quizScoreLabel}: {score}/{questions.length}</div>
+          </div>
+        </div>
+        <div className="quiz-question-list">
+          {questions.map((question, index) => {
+            const prompt = isArabic ? question.promptAr : question.promptEn;
+            const options = isArabic ? question.optionsAr : question.optionsEn;
+            return (
+              <article className="quiz-question-card" key={`${materialId}-${index}`}>
+                <div className="quiz-question-number">{String(index + 1).padStart(2, "0")}</div>
+                <h4>{prompt}</h4>
+                <div className="quiz-options">
+                  {options.map((option, optionIndex) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`quiz-option ${answers[index] === optionIndex ? "active" : ""}`}
+                      onClick={() => setAnswers((current) => ({ ...current, [index]: optionIndex }))}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+        {completed ? (
+          <div className="quiz-result-banner">
+            <strong>{c.quizCompletedLabel}</strong>
+            <span>{c.quizScoreLabel}: {score}/{questions.length}</span>
+          </div>
+        ) : null}
+      </div>
+    </section>
+  );
+};
+
+window.NawaComponents = { Header, HeroSection, FeaturesSection, ExperimentSection, FAQSection, FooterSection, ChatWidget, LoginPortal, TeacherDashboard, QuizPage };
