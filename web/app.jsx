@@ -12,7 +12,6 @@ function App() {
   const [currentView, setCurrentView] = useState("home");
   const [quizContext, setQuizContext] = useState(null);
   const [activeMaterial, setActiveMaterial] = useState("physics");
-  const [activeExperiment, setActiveExperiment] = useState(null);
   const [loginForm, setLoginForm] = useState({ email: "", password: "", purpose: "" });
   const [chemSettings, setChemSettings] = useState({
     anode: "Zn",
@@ -238,50 +237,6 @@ function App() {
     return () => window.clearInterval(timer);
   }, [dragging, coilTurns]);
 
-  // What the AI tutor is told about the student's current screen. Only the
-  // readings that belong to the open subject are included, so the agent is not
-  // handed numbers from a lab the student is not looking at.
-  const labContext = useMemo(() => {
-    const material = (c.materials || []).find((item) => item.id === activeMaterial);
-    if (!material || !activeExperiment) return null;
-
-    let state = null;
-    if (activeMaterial === "physics" && activeExperiment.index === 0) {
-      state = { coilTurns, magnetPosition: magnetX.toFixed(2), inducedSignal };
-    } else if (activeMaterial === "chemistry" && activeExperiment.index === 0) {
-      state = {
-        anode: chemSettings.anode,
-        cathode: chemSettings.cathode,
-        leftElectrolyte: chemSettings.electrolyteLeft,
-        rightElectrolyte: chemSettings.electrolyteRight,
-        saltBridge: chemSettings.saltBridge,
-        wireConnected: chemSettings.connected,
-        voltage: chemMetrics.voltage,
-        current: chemMetrics.current,
-        cellReady: chemMetrics.cellReady
-      };
-    } else if (activeMaterial === "biology" && activeExperiment.index === 0) {
-      state = {
-        lightOn: bioSettings.lightOn,
-        water: bioSettings.water,
-        co2: bioSettings.co2,
-        temperature: bioSettings.temperature,
-        photosynthesisRate: bioMetrics.photosynthesisRate,
-        respirationRate: bioMetrics.respirationRate,
-        oxygenProduced: bioMetrics.oxygenProduced,
-        plantState: bioMetrics.plantState
-      };
-    }
-
-    return {
-      materialId: material.id,
-      materialLabel: material.label,
-      experimentTitle: activeExperiment.title,
-      experimentIndex: activeExperiment.index,
-      state
-    };
-  }, [c, activeMaterial, activeExperiment, coilTurns, magnetX, inducedSignal, chemSettings, chemMetrics, bioSettings, bioMetrics]);
-
   const handleOpenLogin = () => setLoginOpen(true);
 
   const handleCloseLogin = () => {
@@ -349,17 +304,17 @@ function App() {
           {currentView === "dashboard" ? (
             <TeacherDashboard c={c} activeProfile={activeProfile} onBack={handleOpenHome} onOpenQuiz={() => handleOpenQuiz(null)} />
           ) : currentView === "quiz" ? (
-            <QuizPage c={c} quizContext={quizContext} onBack={handleOpenHome} language={language} />
+            <QuizPage c={c} quizContext={quizContext} onBack={handleOpenHome} />
           ) : (
             <>
               <HeroSection c={c} rotation={rotation} onOpenLogin={handleOpenLogin} />
-              <ExperimentSection c={c} activeMaterial={activeMaterial} setActiveMaterial={setActiveMaterial} stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} inducedSignal={inducedSignal} coilTurns={coilTurns} magnetX={magnetX} setCoilTurns={setCoilTurns} updateMagnetPosition={updateMagnetPosition} bioSettings={bioSettings} setBioSettings={setBioSettings} bioMetrics={bioMetrics} bioTrend={bioTrend} resetBiologyExperiment={resetBiologyExperiment} chemSettings={chemSettings} setChemSettings={setChemSettings} chemMetrics={chemMetrics} chemTrend={chemTrend} resetChemistryExperiment={resetChemistryExperiment} onOpenQuiz={handleOpenQuiz} onSelectExperiment={setActiveExperiment} />
+              <ExperimentSection c={c} activeMaterial={activeMaterial} setActiveMaterial={setActiveMaterial} stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} inducedSignal={inducedSignal} coilTurns={coilTurns} magnetX={magnetX} setCoilTurns={setCoilTurns} updateMagnetPosition={updateMagnetPosition} bioSettings={bioSettings} setBioSettings={setBioSettings} bioMetrics={bioMetrics} bioTrend={bioTrend} resetBiologyExperiment={resetBiologyExperiment} chemSettings={chemSettings} setChemSettings={setChemSettings} chemMetrics={chemMetrics} chemTrend={chemTrend} resetChemistryExperiment={resetChemistryExperiment} onOpenQuiz={handleOpenQuiz} />
               <FeaturesSection c={c} />
               <FAQSection c={c} />
               <FooterSection c={c} />
             </>
           )}
-          <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} labContext={labContext} language={language} />
+          <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} />
           <LoginPortal c={c} loginOpen={loginOpen} selectedRole={selectedRole} setSelectedRole={setSelectedRole} loginForm={loginForm} setLoginForm={setLoginForm} onClose={handleCloseLogin} onSubmit={handleSubmitLogin} />
         </div>
       </div>

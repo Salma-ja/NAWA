@@ -111,54 +111,7 @@ NAWA/
 
 ## Run Locally
 
-```bash
-cd web
-node server.js
-```
-
-Then open <http://127.0.0.1:4174>.
-
-Opening `web/index.html` directly from the file system does **not** work: the browser blocks Babel from
-fetching the `.jsx` files over `file://`, and the AI tutor needs the server's API endpoints.
-
-### AI tutor setup
-
-The tutor calls the OpenAI API from the server, so the key is never exposed to the browser.
-
-1. Copy `web/.env.example` to `web/.env`.
-2. Put your key in it: `OPENAI_API_KEY=sk-...`
-3. Restart the server.
-
-On start-up the server prints whether the tutor is connected. `web/.env` is git-ignored -- never commit a real key.
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `OPENAI_API_KEY` | *(required)* | Your OpenAI key. Without it the tutor returns a clear "not configured" message. |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Any chat-completions model. `gpt-4o` is noticeably more accurate, especially in Arabic. |
-| `OPENAI_BASE_URL` | OpenAI | Only change for Azure OpenAI or a compatible proxy. |
-| `PORT` | `4174` | Server port. |
-
-### How the tutor works
-
-| Piece | File |
-|---|---|
-| Lab grounding: real controls, formulas and misconceptions from each simulation | `web/agent/lab-knowledge.js` |
-| System prompt, scope rules, OpenAI transport | `web/agent/agent.js` |
-| `POST /api/chat`, `POST /api/quiz`, `GET /api/status` | `web/server.js` |
-| Chat UI and in-chat scored quiz | `ChatWidget` in `web/components.jsx` |
-
-- **Stays on topic.** The agent answers questions about the six labs and the science behind them, and
-  politely declines anything else. Scope is judged by the model from the system prompt -- there is no
-  keyword filter, because words like *temperature* are off-topic as weather but on-topic in the
-  photosynthesis lab.
-- **Follows the conversation.** Every request carries the previous turns, so "why?" or "and the other
-  one?" resolve against what was just discussed.
-- **Knows what the student is doing.** The student's live simulation settings and readings are sent with
-  each message, so the tutor can answer "why is my voltage 0?" from their actual setup.
-- **Quizzes are marked in code.** The model writes the questions and the answer key; the app compares the
-  student's choice against that key in JavaScript. Letting the model mark answers from memory proved
-  unreliable, so it no longer does.
-- **Works in Arabic and English**, following whichever language the student writes in.
+Open `web/index.html` in a browser.
 
 ## Team
 
