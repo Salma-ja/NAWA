@@ -1827,7 +1827,7 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
   );
 };
 
-const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dragging, setDragging, handleStagePointer, coilLoopOffsets, bulbPower, magnetSvgX, inducedSignal, coilTurns, magnetX, setCoilTurns, updateMagnetPosition, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, chemSettings, setChemSettings, chemMetrics, chemTrend, resetChemistryExperiment, onOpenQuiz }) => {
+const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dragging, setDragging, handleStagePointer, coilLoopOffsets, bulbPower, magnetSvgX, inducedSignal, coilTurns, magnetX, setCoilTurns, updateMagnetPosition, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, chemSettings, setChemSettings, chemMetrics, chemTrend, resetChemistryExperiment, onOpenQuiz, onSelectExperiment }) => {
   const materials = Array.isArray(c.materials) ? c.materials : [];
   const currentMaterial = materials.find((material) => material.id === activeMaterial) || materials[0];
   const [selectedExperimentIndex, setSelectedExperimentIndex] = useState(null);
@@ -1938,6 +1938,19 @@ const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dra
   useEffect(() => {
     setSelectedExperimentIndex(null);
   }, [activeMaterial]);
+
+  // Report the open experiment upward so the AI tutor knows the student's context.
+  // Runs before the early return below, so the hook order stays stable.
+  useEffect(() => {
+    if (typeof onSelectExperiment !== "function") return;
+    if (selectedExperimentIndex === null) {
+      onSelectExperiment(null);
+      return;
+    }
+    const list = Array.isArray(currentMaterial?.experiments) ? currentMaterial.experiments : [];
+    const item = list[selectedExperimentIndex];
+    onSelectExperiment({ index: selectedExperimentIndex, title: item?.title || "" });
+  }, [selectedExperimentIndex, currentMaterial, onSelectExperiment]);
 
   if (!currentMaterial) return null;
   const isPhysics = currentMaterial.id === "physics";
@@ -2053,7 +2066,8 @@ const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dra
               onClick={() => onOpenQuiz({
                 materialId: currentMaterial.id,
                 materialLabel: currentMaterial.label,
-                experimentTitle: selectedExperiment.title
+                experimentTitle: selectedExperiment.title,
+                experimentIndex: selectedExperimentIndex
               })}
             >
               {c.openQuizButton}
@@ -2144,20 +2158,305 @@ const FooterSection = ({ c }) => (
   </footer>
 );
 
-const ChatWidget = ({ c, chatOpen, setChatOpen }) => (
-  <div className="ai-chat-widget">
-    {chatOpen ? (
-      <div className="ai-chat-panel">
-        <div className="ai-chat-head simple"><div className="ai-chat-mini-name">{c.chatName}</div><button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label="Close chat" type="button">x</button></div>
-        <div className="ai-chat-bubble">{c.chatMessage}</div><div className="ai-chat-section-label">{c.chatLabel}</div>
-        <div className="ai-chat-actions"><button className="ai-chat-action" type="button"><span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">{">"}</span></button><button className="ai-chat-action" type="button"><span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">{">"}</span></button></div>
-        <div className="ai-chat-input"><div className="ai-chat-input-shell"><span className="ai-chat-placeholder">{c.chatPlaceholder}</span><button className="ai-chat-send" type="button" aria-label="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></button></div></div>
-      </div>
-    ) : (
-      <button className="ai-chat-trigger" onClick={() => setChatOpen(true)} aria-label="Open NAWA AI Coach" type="button"><OrbitMark /></button>
-    )}
-  </div>
+/** Renders the agent's plain-text reply, preserving its line breaks. */
+const ChatMessageBody = ({ text }) => (
+  <>
+    {String(text).split("\n").map((line, index) => (
+      <span key={index} className="ai-chat-line">{line}</span>
+    ))}
+  </>
 );
+
+/**
+ * A scored quiz inside the chat.
+ *
+ * The questions come from the model, but the marking is done here in plain
+ * JavaScript against the answer index the API returned. Asking the model to
+ * remember which letter was correct across turns proved unreliable, and a
+ * tutor that marks a right answer wrong is worse than no tutor at all.
+ */
+const ChatQuizCard = ({ c, questions }) => {
+  const [picked, setPicked] = useState({});
+  const answeredCount = Object.keys(picked).length;
+  const score = questions.reduce(
+    (total, question, index) => total + (picked[index] === question.answer ? 1 : 0),
+    0
+  );
+
+  return (
+    <div className="ai-chat-quiz">
+      <div className="ai-chat-quiz-head">
+        <strong>{c.quizAiBadge}</strong>
+        <span>{c.quizScoreLabel}: {score}/{questions.length}</span>
+      </div>
+      {questions.map((question, index) => {
+        const chosen = picked[index];
+        const answered = chosen !== undefined;
+        return (
+          <div className="ai-chat-quiz-q" key={index}>
+            <div className="ai-chat-quiz-prompt">{index + 1}. {question.prompt}</div>
+            {question.options.map((option, optionIndex) => {
+              const state = !answered
+                ? ""
+                : optionIndex === question.answer
+                  ? "correct"
+                  : optionIndex === chosen
+                    ? "wrong"
+                    : "";
+              return (
+                <button
+                  key={optionIndex}
+                  type="button"
+                  className={`ai-chat-quiz-option ${state}`}
+                  disabled={answered}
+                  onClick={() => setPicked((current) => ({ ...current, [index]: optionIndex }))}
+                >
+                  {option}
+                </button>
+              );
+            })}
+            {answered ? (
+              <div className="ai-chat-quiz-feedback">
+                <strong>{chosen === question.answer ? c.quizAnswerCorrect : c.quizAnswerWrong}</strong>
+                {question.explanation ? <span>{question.explanation}</span> : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+      {answeredCount === questions.length ? (
+        <div className="ai-chat-quiz-total">{c.quizScoreLabel}: {score}/{questions.length}</div>
+      ) : null}
+    </div>
+  );
+};
+
+const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language }) => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState(null);
+  const [lastAttempt, setLastAttempt] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  const scrollRef = React.useRef(null);
+  const inputRef = React.useRef(null);
+
+  // Keep the newest message in view as the conversation grows.
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, pending, error]);
+
+  useEffect(() => {
+    if (chatOpen && inputRef.current) inputRef.current.focus();
+  }, [chatOpen]);
+
+  const send = async (rawText) => {
+    const text = String(rawText || "").trim();
+    if (!text || pending) return;
+
+    // The full prior exchange goes with every request, so the agent can
+    // resolve follow-ups like "why?" against what was already said.
+    const history = messages
+      .filter((item) => item.role !== "quiz")
+      .map((item) => ({ role: item.role, content: item.content }));
+
+    setMessages((current) => [...current, { role: "user", content: text }]);
+    setInput("");
+    setError(null);
+    setLastAttempt(text);
+    setPending(true);
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, history, labContext, language })
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        setError(payload.error === "not_configured" ? c.chatNotConfigured : payload.message || c.chatErrorGeneric);
+        return;
+      }
+      setMessages((current) => [...current, { role: "assistant", content: payload.reply }]);
+    } catch {
+      setError(c.chatErrorGeneric);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  /** The "Quiz me" button: structured questions, marked locally. */
+  const runQuiz = async () => {
+    if (pending) return;
+    setMessages((current) => [...current, { role: "user", content: c.chatQuickQuiz }]);
+    setError(null);
+    setLastAttempt("");
+    setPending(true);
+
+    try {
+      const response = await fetch("/api/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          materialId: labContext?.materialId,
+          experimentIndex: labContext?.experimentIndex,
+          experimentTitle: labContext?.experimentTitle,
+          language
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok || !Array.isArray(payload.questions) || !payload.questions.length) {
+        setError(payload.error === "not_configured" ? c.chatNotConfigured : payload.message || c.quizAiFailed);
+        return;
+      }
+      setMessages((current) => [...current, { role: "quiz", questions: payload.questions }]);
+    } catch {
+      setError(c.quizAiFailed);
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const retry = () => {
+    if (!lastAttempt) return;
+    // Drop the user turn that failed, then resend it.
+    setMessages((current) => {
+      const last = current[current.length - 1];
+      return last && last.role === "user" ? current.slice(0, -1) : current;
+    });
+    send(lastAttempt);
+  };
+
+  const startNewChat = () => {
+    setMessages([]);
+    setError(null);
+    setInput("");
+    setLastAttempt("");
+  };
+
+  const quickActions = [
+    { label: c.chatQuickExplain, run: () => send(c.chatQuickExplain) },
+    { label: c.chatQuickHint, run: () => send(c.chatQuickHint) },
+    { label: c.chatQuickQuiz, run: runQuiz }
+  ].filter((action) => action.label);
+  const contextLabel = labContext?.experimentTitle
+    ? `${c.chatContextPrefix} ${labContext.experimentTitle}`
+    : c.chatContextNone;
+
+  return (
+    <div className="ai-chat-widget">
+      {chatOpen ? (
+        <div className={`ai-chat-panel ${expanded ? "expanded" : ""}`}>
+          <div className="ai-chat-head">
+            <div className="ai-chat-head-id">
+              <span className="ai-chat-head-mark" aria-hidden="true"><OrbitMark /></span>
+              <div>
+                <div className="ai-chat-mini-name">{c.chatName}</div>
+                <div className="ai-chat-context">{contextLabel}</div>
+              </div>
+            </div>
+            <div className="ai-chat-head-actions">
+              {messages.length ? (
+                <button className="ai-chat-new" onClick={startNewChat} type="button">{c.chatClear}</button>
+              ) : null}
+              <button
+                className="ai-chat-expand"
+                onClick={() => setExpanded((current) => !current)}
+                aria-label={expanded ? c.chatCollapse : c.chatExpand}
+                title={expanded ? c.chatCollapse : c.chatExpand}
+                type="button"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  {expanded ? (
+                    <><path d="M9 3v6H3"></path><path d="M15 21v-6h6"></path></>
+                  ) : (
+                    <><path d="M3 9V3h6"></path><path d="M21 15v6h-6"></path></>
+                  )}
+                </svg>
+              </button>
+              <button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label="Close chat" type="button">x</button>
+            </div>
+          </div>
+
+          <div className="ai-chat-scroll" ref={scrollRef}>
+            {messages.length === 0 ? (
+              <>
+                <div className="ai-chat-bubble">{c.chatWelcome}</div>
+                <div className="ai-chat-section-label">{c.chatLabel}</div>
+                <div className="ai-chat-actions">
+                  {quickActions.map((action) => (
+                    <button key={action.label} className="ai-chat-action" type="button" onClick={action.run}>
+                      <span>{action.label}</span>
+                      <span className="ai-chat-action-arrow">{">"}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              messages.map((item, index) => (
+                item.role === "quiz" ? (
+                  <ChatQuizCard key={index} c={c} questions={item.questions} />
+                ) : (
+                  <div key={index} className={`ai-chat-msg ${item.role}`}>
+                    <ChatMessageBody text={item.content} />
+                  </div>
+                )
+              ))
+            )}
+
+            {pending ? (
+              <div className="ai-chat-msg assistant pending">
+                <span className="ai-chat-dot"></span>
+                <span className="ai-chat-dot"></span>
+                <span className="ai-chat-dot"></span>
+                <span className="ai-chat-thinking">{c.chatThinking}</span>
+              </div>
+            ) : null}
+
+            {error ? (
+              <div className="ai-chat-error">
+                <span>{error}</span>
+                {lastAttempt ? (
+                  <button className="ai-chat-retry" type="button" onClick={retry}>{c.chatRetry}</button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
+          <form
+            className="ai-chat-input"
+            onSubmit={(event) => {
+              event.preventDefault();
+              send(input);
+            }}
+          >
+            <div className="ai-chat-input-shell">
+              <input
+                ref={inputRef}
+                className="ai-chat-field"
+                type="text"
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder={c.chatPlaceholder}
+                aria-label={c.chatPlaceholder}
+                disabled={pending}
+                maxLength={1200}
+              />
+              <button className="ai-chat-send" type="submit" aria-label={c.chatSendLabel} disabled={pending || !input.trim()}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
+              </button>
+            </div>
+            <div className="ai-chat-disclaimer">{c.chatDisclaimer}</div>
+          </form>
+        </div>
+      ) : (
+        <button className="ai-chat-trigger" onClick={() => setChatOpen(true)} aria-label="Open NAWA AI Coach" type="button"><OrbitMark /></button>
+      )}
+    </div>
+  );
+};
 
 const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, setLoginForm, onClose, onSubmit }) => {
   if (!loginOpen) return null;
@@ -2313,13 +2612,55 @@ const QUIZ_BANK = {
   ]
 };
 
-const QuizPage = ({ c, quizContext, onBack }) => {
+const QuizPage = ({ c, quizContext, onBack, language }) => {
   const isArabic = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
   const materialId = quizContext?.materialId || "physics";
-  const questions = QUIZ_BANK[materialId] || QUIZ_BANK.physics;
+
+  // The built-in bank is the baseline; AI questions replace it when generated.
+  const bankQuestions = (QUIZ_BANK[materialId] || QUIZ_BANK.physics).map((question) => ({
+    prompt: isArabic ? question.promptAr : question.promptEn,
+    options: isArabic ? question.optionsAr : question.optionsEn,
+    answer: question.answer,
+    explanation: ""
+  }));
+
+  const [aiQuestions, setAiQuestions] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState(null);
   const [answers, setAnswers] = useState({});
+
+  const questions = aiQuestions || bankQuestions;
   const score = questions.reduce((total, question, index) => total + (answers[index] === question.answer ? 1 : 0), 0);
   const completed = Object.keys(answers).length === questions.length;
+
+  const generate = async () => {
+    if (generating) return;
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const response = await fetch("/api/quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          materialId,
+          experimentIndex: quizContext?.experimentIndex,
+          experimentTitle: quizContext?.experimentTitle,
+          language
+        })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok || !Array.isArray(payload.questions) || !payload.questions.length) {
+        setGenError(payload.error === "not_configured" ? c.chatNotConfigured : payload.message || c.quizAiFailed);
+        return;
+      }
+      setAiQuestions(payload.questions);
+      setAnswers({});
+    } catch {
+      setGenError(c.quizAiFailed);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   return (
     <section className="quiz-page" id="quiz-page">
@@ -2336,29 +2677,49 @@ const QuizPage = ({ c, quizContext, onBack }) => {
           <p>{c.quizText}</p>
           <div className="quiz-top-actions">
             <button className="btn btn-secondary" type="button" onClick={onBack}>{c.backToExperiments}</button>
+            <button className="btn btn-secondary quiz-ai-btn" type="button" onClick={generate} disabled={generating}>
+              {generating ? c.quizAiLoading : c.quizAiGenerate}
+            </button>
             <div className="quiz-score-pill">{c.quizScoreLabel}: {score}/{questions.length}</div>
           </div>
+          {aiQuestions ? <div className="quiz-ai-badge">{c.quizAiBadge}</div> : null}
+          {genError ? <div className="quiz-ai-error">{genError}</div> : null}
         </div>
         <div className="quiz-question-list">
           {questions.map((question, index) => {
-            const prompt = isArabic ? question.promptAr : question.promptEn;
-            const options = isArabic ? question.optionsAr : question.optionsEn;
+            const chosen = answers[index];
+            const answered = chosen !== undefined;
             return (
-              <article className="quiz-question-card" key={`${materialId}-${index}`}>
+              <article className="quiz-question-card" key={`${materialId}-${aiQuestions ? "ai" : "bank"}-${index}`}>
                 <div className="quiz-question-number">{String(index + 1).padStart(2, "0")}</div>
-                <h4>{prompt}</h4>
+                <h4>{question.prompt}</h4>
                 <div className="quiz-options">
-                  {options.map((option, optionIndex) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={`quiz-option ${answers[index] === optionIndex ? "active" : ""}`}
-                      onClick={() => setAnswers((current) => ({ ...current, [index]: optionIndex }))}
-                    >
-                      {option}
-                    </button>
-                  ))}
+                  {question.options.map((option, optionIndex) => {
+                    const state = !answered
+                      ? ""
+                      : optionIndex === question.answer
+                        ? "correct"
+                        : optionIndex === chosen
+                          ? "wrong"
+                          : "";
+                    return (
+                      <button
+                        key={`${option}-${optionIndex}`}
+                        type="button"
+                        className={`quiz-option ${chosen === optionIndex ? "active" : ""} ${state}`}
+                        onClick={() => setAnswers((current) => ({ ...current, [index]: optionIndex }))}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
                 </div>
+                {answered && question.explanation ? (
+                  <div className="quiz-explanation">
+                    <strong>{chosen === question.answer ? c.quizAnswerCorrect : c.quizAnswerWrong}</strong>
+                    <span>{question.explanation}</span>
+                  </div>
+                ) : null}
               </article>
             );
           })}
