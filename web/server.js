@@ -14,20 +14,33 @@ function loadEnvFile() {
   } catch {
     return;
   }
+
+  const overridden = [];
   for (const line of raw.split(/\r?\n/)) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
     const separator = trimmed.indexOf("=");
     if (separator === -1) continue;
     const key = trimmed.slice(0, separator).trim();
+    if (!key) continue;
     const value = trimmed.slice(separator + 1).trim().replace(/^["']|["']$/g, "");
-    if (key && !(key in process.env)) process.env[key] = value;
+
+    // web/.env wins over the ambient environment. A stale OPENAI_API_KEY left
+    // in the user's system variables would otherwise silently override the file
+    // and be sent to whichever provider .env points at -- which fails as a 401
+    // that looks like a bad key rather than a config clash.
+    if (key in process.env && process.env[key] !== value) overridden.push(key);
+    process.env[key] = value;
+  }
+
+  if (overridden.length) {
+    console.log(`Note: web/.env overrode system variable(s): ${overridden.join(", ")}`);
   }
 }
 
 loadEnvFile();
 
-const { askTutor, generateQuiz, DEFAULT_MODEL } = require("./agent/agent");
+const { askTutor, streamTutor, generateQuiz, DEFAULT_MODEL } = require("./agent/agent");
 
 const host = "127.0.0.1";
 const port = Number(process.env.PORT) || 4174;
@@ -159,6 +172,50 @@ async function handleApi(req, res, pathname) {
     if (!message) {
       return sendJson(res, 400, { error: "bad_request", message: "A message is required." });
     }
+
+    if (body.stream) {
+      const tokens = streamTutor({
+        message,
+        history: body.history,
+        labContext: body.labContext,
+        language: body.language === "ar" ? "ar" : "en",
+        apiKey,
+        model
+      });
+
+      // Pull the first token before committing to a 200. An auth or model
+      // failure surfaces here, while a normal JSON error can still be sent.
+      let first;
+      try {
+        first = await tokens.next();
+      } catch (error) {
+        return reportAgentError(res, error);
+      }
+
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-store",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no"
+      });
+
+      try {
+        if (!first.done && first.value) {
+          res.write(`data: ${JSON.stringify({ t: first.value })}\n\n`);
+        }
+        for await (const token of tokens) {
+          res.write(`data: ${JSON.stringify({ t: token })}\n\n`);
+        }
+        res.write("data: [DONE]\n\n");
+      } catch (error) {
+        // Headers are already sent, so the failure travels as a stream event.
+        console.error("[nawa-agent] stream broke:", error.message);
+        res.write(`data: ${JSON.stringify({ error: "stream" })}\n\n`);
+      }
+      res.end();
+      return undefined;
+    }
+
     try {
       const reply = await askTutor({
         message,

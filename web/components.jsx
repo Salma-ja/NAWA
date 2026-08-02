@@ -927,17 +927,26 @@ const DNAReplicationSimulation = ({ c, currentMaterial, resetBiologyExperiment }
 };
 
 const BiologySimulationV2 = ({ c, currentMaterial, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, selectedExperimentIndex }) => {
+  // Every hook must run on every render. Switching from experiment 01 to 02
+  // keeps this same component mounted, so an early return placed above a hook
+  // would change the hook count and crash React.
+  const [insideLeaf, setInsideLeaf] = useState(false);
+
   if (selectedExperimentIndex === 1) {
     return <DNAReplicationSimulation c={c} currentMaterial={currentMaterial} resetBiologyExperiment={resetBiologyExperiment} />;
   }
 
-  const [insideLeaf, setInsideLeaf] = useState(false);
   const visualState = bioSettings.lightOn ? "healthy" : "wilted";
   const plantStateLabel = visualState === "healthy" ? c.bioHealthy : c.bioWilted;
+
+  // In the light, photosynthesis dominates: CO2 is taken in, O2 given off.
+  // In the dark only respiration runs, so the two reverse. ATP is always made.
+  const IN = "↓";
+  const OUT = "↑";
   const moleculeStatus = [
-    { label: "CO2", arrow: bioSettings.lightOn ? "?" : "?", tone: "co2", hint: bioSettings.lightOn ? c.bioLeafCo2 : c.bioLeafRespiration },
-    { label: "O2", arrow: bioSettings.lightOn ? "?" : "?", tone: "o2", hint: bioSettings.lightOn ? c.bioLeafO2 : c.bioLeafRespiration },
-    { label: "ATP", arrow: "?", tone: "atp", hint: c.bioLeafAtp }
+    { label: "CO2", arrow: bioSettings.lightOn ? IN : OUT, tone: "co2", hint: bioSettings.lightOn ? c.bioLeafCo2 : c.bioLeafRespiration },
+    { label: "O2", arrow: bioSettings.lightOn ? OUT : IN, tone: "o2", hint: bioSettings.lightOn ? c.bioLeafO2 : c.bioLeafRespiration },
+    { label: "ATP", arrow: OUT, tone: "atp", hint: c.bioLeafAtp }
   ];
 
   return (
@@ -950,7 +959,12 @@ const BiologySimulationV2 = ({ c, currentMaterial, bioSettings, setBioSettings, 
         <div className="bio-next-controls-list">
           <div className="bio-next-control">
             <div className="bio-next-control-head">
-              <span className="bio-next-control-icon" aria-hidden="true">??</span>
+              <span className="bio-next-control-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="4"></circle>
+                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
+                </svg>
+              </span>
               <div>
                 <strong>{c.bioLightLabel}</strong>
                 <span>{bioSettings.lightOn ? c.bioOn : c.bioOff}</span>
@@ -2158,10 +2172,52 @@ const FooterSection = ({ c }) => (
   </footer>
 );
 
-/** Renders the agent's plain-text reply, preserving its line breaks. */
+/**
+ * Strips markdown and LaTeX from a reply before display.
+ *
+ * The system prompt asks for plain text, but models drift back into "**bold**",
+ * "### headings" and \frac{a}{b} math. The chat bubble renders no formatting, so
+ * that markup reaches the student as literal punctuation -- and in right-to-left
+ * Arabic the reversed formula fragments are unreadable. Cleaning it here means
+ * the display is correct whichever model or provider is configured.
+ */
+const cleanReplyText = (raw) => {
+  let text = String(raw || "");
+
+  // LaTeX delimiters and the commands that usually sit inside them.
+  text = text.replace(/\\[()[\]]/g, "");
+  text = text.replace(/\$\$?/g, "");
+  text = text.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1) / ($2)");
+  text = text.replace(/\\(?:text|mathrm|mathbf|textbf)\s*\{([^{}]*)\}/g, "$1");
+  text = text.replace(/\\(?:cdot|times)\b/g, "x");
+  text = text.replace(/\\(?:leq|le)\b/g, "<=");
+  text = text.replace(/\\(?:geq|ge)\b/g, ">=");
+  text = text.replace(/\\(?:rightarrow|to|Rightarrow)\b/g, "->");
+  text = text.replace(/\\[a-zA-Z]+/g, "");        // any remaining \command
+  text = text.replace(/[{}]/g, "");
+
+  // Markdown emphasis, headings, code fences and bullets.
+  text = text.replace(/```[a-zA-Z]*\n?/g, "");
+  text = text.replace(/`([^`]+)`/g, "$1");
+  text = text.replace(/\*\*\*([^*]+)\*\*\*/g, "$1");
+  text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
+  text = text.replace(/(^|\s)\*([^*\n]+)\*(?=\s|$|[.,!?:;])/g, "$1$2");
+  text = text.replace(/^\s{0,3}#{1,6}\s*/gm, "");
+  text = text.replace(/^\s*[*+]\s+/gm, "- ");
+  text = text.replace(/^\s*>\s?/gm, "");
+
+  // Tidy the whitespace the substitutions leave behind.
+  text = text.replace(/[ \t]{2,}/g, " ");
+  text = text.replace(/ +$/gm, "");
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  return text.trim();
+};
+
+/** Renders the agent's reply as plain text, preserving its line breaks. */
 const ChatMessageBody = ({ text }) => (
   <>
-    {String(text).split("\n").map((line, index) => (
+    {cleanReplyText(text).split("\n").map((line, index) => (
       <span key={index} className="ai-chat-line">{line}</span>
     ))}
   </>
@@ -2270,15 +2326,74 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language }) => {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history, labContext, language })
+        body: JSON.stringify({ message: text, history, labContext, language, stream: true })
       });
-      const payload = await response.json().catch(() => ({}));
 
-      if (!response.ok) {
+      // Errors come back as JSON even when streaming was requested.
+      if (!response.ok || !response.body || !(response.headers.get("content-type") || "").includes("text/event-stream")) {
+        const payload = await response.json().catch(() => ({}));
         setError(payload.error === "not_configured" ? c.chatNotConfigured : payload.message || c.chatErrorGeneric);
         return;
       }
-      setMessages((current) => [...current, { role: "assistant", content: payload.reply }]);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let answer = "";
+      let started = false;
+      let streamFailed = false;
+
+      const pushAnswer = () => {
+        setMessages((current) => {
+          const next = [...current];
+          next[next.length - 1] = { role: "assistant", content: answer };
+          return next;
+        });
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Consume only whole "data:" lines; a chunk may end mid-line.
+        let newline;
+        while ((newline = buffer.indexOf("\n")) !== -1) {
+          const line = buffer.slice(0, newline).trim();
+          buffer = buffer.slice(newline + 1);
+          if (!line.startsWith("data:")) continue;
+
+          const raw = line.slice(5).trim();
+          if (raw === "[DONE]") continue;
+
+          let frame;
+          try {
+            frame = JSON.parse(raw);
+          } catch {
+            continue;
+          }
+
+          if (frame.error) {
+            streamFailed = true;
+            continue;
+          }
+          if (typeof frame.t !== "string") continue;
+
+          answer += frame.t;
+          if (!started) {
+            // First token: swap the typing dots for a real message bubble.
+            started = true;
+            setPending(false);
+            setMessages((current) => [...current, { role: "assistant", content: answer }]);
+          } else {
+            pushAnswer();
+          }
+        }
+      }
+
+      // Surface a broken stream even when some text arrived, so a truncated
+      // answer is never mistaken for a complete one.
+      if (streamFailed || !answer) setError(c.chatErrorGeneric);
     } catch {
       setError(c.chatErrorGeneric);
     } finally {

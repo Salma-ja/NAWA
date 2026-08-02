@@ -35,7 +35,7 @@ window.NAWA_CONTENT = {
       { title: "Finish with mastery", text: "A personalized quiz closes the loop and checks what the learner actually understood." }
     ],
     pills: ["AI Coach Active", "Realtime Physics Preview", "Adaptive Quiz Ready"],
-    physicsLabTitle: "Physics Lab � Experiment 01",
+    physicsLabTitle: "Physics Lab • Experiment 01",
     physicsLabTag: "Electromagnetic induction",
     physicsLabName: "Moving Magnet & Coil",
     physicsLabText: "Drag the magnet through the coil, increase the number of turns, and watch the induced signal rise as the magnetic flux changes.",
@@ -47,15 +47,15 @@ window.NAWA_CONTENT = {
     resetMagnet: "Reset magnet",
     insertMagnet: "Insert into coil",
     experimentList: [
-      { title: "01 � Induction", text: "Move the magnet through the coil and compare output." },
-      { title: "02 � Circuits", text: "Coming next for the physics branch." },
-      { title: "03 � Waves", text: "Coming next for the physics branch." },
-      { title: "04 � Motion", text: "Coming next for the physics branch." }
+      { title: "01 • Induction", text: "Move the magnet through the coil and compare output." },
+      { title: "02 • Circuits", text: "Coming next for the physics branch." },
+      { title: "03 • Waves", text: "Coming next for the physics branch." },
+      { title: "04 • Motion", text: "Coming next for the physics branch." }
     ],
     subjects: [
-      { name: "Physics", note: "Fields � Motion � Electricity" },
-      { name: "Chemistry", note: "Reactions � Bonds � Labs" },
-      { name: "Biology", note: "Cells � Systems � Processes" },
+      { name: "Physics", note: "Fields • Motion • Electricity" },
+      { name: "Chemistry", note: "Reactions • Bonds • Labs" },
+      { name: "Biology", note: "Cells • Systems • Processes" },
       { name: "School + University", note: "One platform, two paths" }
     ],
     chatName: "Jarreeb AI",
@@ -78,7 +78,7 @@ window.NAWA_CONTENT = {
     bookDemo: "Book a Demo",
     getStarted: "Get Started",
     footer: [
-      "NAWA LAB � Interactive science simulations",
+      "NAWA LAB • Interactive science simulations",
       "Physics, Chemistry, Biology, and AI-guided learning",
       "Built for modern scientific experiment experiences"
     ]

@@ -52,8 +52,8 @@ NAWA students work in both languages, and most of them study science in Arabic. 
 - Lead with the answer, then the reason. No opening pleasantries.
 - When the student asks why their simulation is behaving a certain way, use the live lab state you were given and refer to their actual settings and numbers.
 - When they are stuck mid-experiment, point at the next thing worth trying before giving the whole answer away. If they ask outright for the answer, give it.
-- Plain text only: no markdown, no headings, no bold, no tables. Short paragraphs, and lines beginning with "- " only when a list is genuinely clearer.
-- Write formulas inline as readable text rather than notation.
+- Plain text only. Your reply is shown in a chat bubble that renders no formatting at all, so any markup appears to the student as literal punctuation. Never use markdown headings, asterisks for bold or italics, backticks, or tables. Short paragraphs, and lines beginning with "- " only when a list is genuinely clearer.
+- Never use LaTeX or any math markup: no backslash commands, no \\frac, \\cdot or \\text, and no \\( \\) or \\[ \\] delimiters. Write every formula as ordinary readable text, for example "momentum = mass x velocity" or "final velocity = total momentum / total mass". Use x for multiply and / for divide. This matters most in Arabic, where reversed math markup becomes unreadable.
 - If something falls outside what the simulation models, or you are unsure, say so plainly instead of inventing a number.
 
 ## Quizzes asked for in conversation
@@ -119,7 +119,14 @@ async function callOpenAI({ messages, apiKey, model = DEFAULT_MODEL, jsonMode = 
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    const error = new Error(`OpenAI request failed (${response.status})`);
+
+    // Some OpenAI-compatible providers reject response_format outright.
+    // Retry once without it -- parseJsonLoosely can still recover the object.
+    if (jsonMode && response.status === 400) {
+      return callOpenAI({ messages, apiKey, model, jsonMode: false, maxTokens });
+    }
+
+    const error = new Error(`Chat completion request failed (${response.status})`);
     error.status = response.status;
     error.detail = detail.slice(0, 500);
     throw error;
@@ -129,8 +136,8 @@ async function callOpenAI({ messages, apiKey, model = DEFAULT_MODEL, jsonMode = 
   return payload.choices?.[0]?.message?.content?.trim() || "";
 }
 
-/** One chat turn. `history` carries the earlier turns so follow-ups resolve. */
-async function askTutor({ message, history, labContext, language, apiKey, model }) {
+/** Builds the message array for a chat turn, shared by both transports. */
+function buildChatMessages({ message, history, labContext, language }) {
   const messages = [{ role: "system", content: buildSystemPrompt({ language }) }];
 
   const context = buildContextMessage(labContext);
@@ -139,7 +146,106 @@ async function askTutor({ message, history, labContext, language, apiKey, model 
   messages.push(...normalizeHistory(history));
   messages.push({ role: "user", content: String(message).slice(0, MAX_MESSAGE_CHARS) });
 
+  return messages;
+}
+
+/** One chat turn. `history` carries the earlier turns so follow-ups resolve. */
+async function askTutor({ message, history, labContext, language, apiKey, model }) {
+  const messages = buildChatMessages({ message, history, labContext, language });
   return callOpenAI({ messages, apiKey, model, maxTokens: 700 });
+}
+
+/**
+ * Streams a chat turn token by token.
+ *
+ * Yields text fragments as the provider produces them. The caller is
+ * responsible for reassembling them -- fragments can split mid-word and even
+ * mid-escape-sequence, so nothing may interpret a fragment on its own.
+ */
+async function* streamTutor({ message, history, labContext, language, apiKey, model = DEFAULT_MODEL }) {
+  const messages = buildChatMessages({ message, history, labContext, language });
+
+  const response = await fetch(`${BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: 0.6,
+      max_tokens: 700,
+      stream: true
+    })
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    const error = new Error(`Chat completion request failed (${response.status})`);
+    error.status = response.status;
+    error.detail = detail.slice(0, 500);
+    throw error;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for await (const chunk of response.body) {
+    buffer += decoder.decode(chunk, { stream: true });
+
+    // Server-sent events arrive as "data: {...}" lines separated by newlines.
+    // A chunk can end mid-line, so only complete lines are consumed here.
+    let newline;
+    while ((newline = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, newline).trim();
+      buffer = buffer.slice(newline + 1);
+
+      if (!line.startsWith("data:")) continue;
+      const payload = line.slice(5).trim();
+      if (payload === "[DONE]") return;
+
+      try {
+        const token = JSON.parse(payload).choices?.[0]?.delta?.content;
+        if (token) yield token;
+      } catch {
+        // A malformed keep-alive or comment frame; skip it.
+      }
+    }
+  }
+}
+
+/**
+ * Parses a JSON reply that may not be pure JSON.
+ *
+ * Providers other than OpenAI often ignore response_format and wrap the object
+ * in a ```json fence or a sentence of preamble. Recovering the object here
+ * keeps the quiz working across OpenAI-compatible services.
+ */
+function parseJsonLoosely(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return null;
+
+  const candidates = [text];
+
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fenced) candidates.push(fenced[1].trim());
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    candidates.push(text.slice(firstBrace, lastBrace + 1));
+  }
+
+  for (const candidate of candidates) {
+    try {
+      const value = JSON.parse(candidate);
+      if (value && typeof value === "object") return value;
+    } catch {
+      // try the next candidate
+    }
+  }
+  return null;
 }
 
 const QUIZ_CONTRACT = `Respond with a single JSON object holding one key, "questions": an array of question objects. Each question object has "prompt" (string), "options" (array of exactly 3 strings), "answer" (integer, the 0-based index into options of the correct one) and "explanation" (one short sentence saying why it is correct). Every string must be written in the requested language.`;
@@ -171,12 +277,8 @@ async function generateQuiz({ materialId, experimentIndex, experimentTitle, lang
 
   const raw = await callOpenAI({ messages, apiKey, model, jsonMode: true, maxTokens: 900 });
 
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new Error("The model did not return valid quiz JSON.");
-  }
+  const parsed = parseJsonLoosely(raw);
+  if (!parsed) throw new Error("The model did not return valid quiz JSON.");
 
   const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
   const clean = questions
@@ -195,4 +297,4 @@ async function generateQuiz({ materialId, experimentIndex, experimentTitle, lang
   return clean;
 }
 
-module.exports = { askTutor, generateQuiz, buildSystemPrompt, DEFAULT_MODEL };
+module.exports = { askTutor, streamTutor, generateQuiz, buildSystemPrompt, DEFAULT_MODEL };
