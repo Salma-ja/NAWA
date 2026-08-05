@@ -64,6 +64,384 @@ Object.assign(window.NAWA_CONTENT.en, {
 });
 
 Object.assign(window.NAWA_CONTENT.ar, {
+  launchDemo: "ابدأ التعلّم",
+  eyebrow: "تعلّم العلوم بالتجربة، مش بالحفظ",
+  heroTitleLine1: "من نواة الفكرة",
+  heroTitleLine2Before: "",
+  heroTitleAccent: "تبدأ",
+  heroTitleLine2After: "العلوم",
+  heroText: "جرّب العلوم بدل ما تحفظها. استكشف مفاهيم الفيزياء والكيمياء والأحياء من خلال تجارب ومحاكاة تفاعلية تساعدك تفهم الفكرة وتشوفها قدّامك.",
+  heroPrimaryCta: "استكشف التجارب",
+  heroPrimaryArrow: "←",
+  heroTagsLabel: "مزايا نواة",
+  heroTags: ["محاكاة تفاعلية", "تعلّم بصري", "إرشاد ذكي"],
+  heroPhysicsText: "شاهد الحركة والقوى والطاقة من خلال محاكاة تفاعلية توضّح الفكرة خطوة بخطوة.",
+  heroChemistryText: "اخلط المواد، جرّب التفاعلات، وشاهد كيف تظهر النتائج أمامك بشكل واضح.",
+  heroBiologyText: "استكشف الخلية والجسم وDNA من خلال تجارب بصرية تقرّب لك عالم الحياة.",
+  heroStats: [
+    { value: 3, suffix: "", label: "مجالات علمية رئيسية" },
+    { value: "تفاعلية بالكامل", suffix: "", label: "تجارب رقمية سهلة وآمنة" }
+  ],
+  featuresTitle: "لماذا يتعلّم الطلاب بشكل أفضل مع نواة",
+  featuresText: "",
+  experienceTitle: "رحلة واحدة، من الفضول إلى الإتقان",
+  experienceText: "تقدّم الصفحة الرئيسية مسارًا واضحًا ومتكاملًا يساعد الطلاب والمعلمين على فهم القيمة بسرعة.",
+  faqTitle: "الأسئلة الشائعة",
+  faqText: "إجابات سريعة على أكثر الأسئلة التي قد يطرحها الطلاب والمعلمون قبل البدء.",
+  outputUnit: "شدة الإشارة",
+  experimentStart: "ابدأ",
+  chatAskLabel: "اسأل نواة",
+  chatWelcome: "مرحبًا! تحتاج مساعدة؟",
+  chatTooltip: "مساعد نواة الذكي",
+  chatCloseLabel: "إغلاق المحادثة",
+  chatSendLabel: "إرسال",
+  chatIntroTitle: "أهلًا! أنا نواة 👋",
+  chatIntroText: "أقدر أساعدك تختار تجربة، أفهّمك مفهوم علمي، أو أشرح لك خطوات المحاكاة.",
+  chatLabel: "اقتراحات سريعة",
+  chatPlaceholder: "اكتب سؤالك هنا...",
+  chatPrimary: "ساعدني أختار تجربة",
+  chatSecondary: "اشرح لي الفكرة العلمية",
+  features: [
+    { title: "محاكاة تفاعلية", text: "يغيّر الطلاب المتغيرات، ويرون النتائج مباشرة، ويتعلمون من خلال التجربة بدلًا من الحفظ.", icon: "simulation" },
+    { title: "مدرب تعلم ذكي", text: "يقدّم ملاحظات فورية وتلميحات ذكية وإرشادًا سياقيًا يساعد الطالب على البقاء على المسار الصحيح داخل كل مختبر.", icon: "coach" },
+    { title: "تقييمات متكيفة", text: "ينشأ كل اختبار ديناميكيًا من أفعال الطالب نفسها، مما يعزز الفهم بعد الممارسة.", icon: "assessment" }
+  ]
+});
+
+Object.assign(window.NAWA_CONTENT.en, {
+  launchDemo: "Start Learning",
+  eyebrow: "Learn science by trying, not memorizing",
+  heroTitleLine1: "From the nucleus of the idea",
+  heroTitleLine2Before: "",
+  heroTitleAccent: "begins",
+  heroTitleLine2After: "science",
+  heroText: "Try science instead of memorizing it. Explore physics, chemistry, and biology through interactive experiments and simulations that help students understand the idea and see it clearly.",
+  heroPrimaryCta: "Explore Experiments",
+  heroPrimaryArrow: "←",
+  heroTagsLabel: "NAWA highlights",
+  heroTags: ["Interactive simulations", "Visual learning", "Smart guidance"],
+  heroPhysicsText: "Watch motion, forces, and energy through interactive simulations that explain the idea step by step.",
+  heroChemistryText: "Mix materials, test reactions, and watch results appear clearly in front of the student.",
+  heroBiologyText: "Explore the cell, the body, and DNA through visual experiences that bring life science closer.",
+  heroStats: [
+    { value: 3, suffix: "", label: "Core science domains" },
+    { value: "Fully interactive", suffix: "", label: "Simple and safe digital experiments" }
+  ],
+  featuresTitle: "Why students learn better with NAWA",
+  featuresText: "",
+  experienceText: "The homepage presents a clear, complete path that helps students and teachers understand the value quickly.",
+  faqText: "Quick answers to the most common questions students and teachers may ask before getting started.",
+  outputUnit: "Signal strength",
+  experimentStart: "Start",
+  chatAskLabel: "Ask NAWA",
+  chatWelcome: "Welcome! Need help?",
+  chatTooltip: "NAWA AI assistant",
+  chatCloseLabel: "Close chat",
+  chatSendLabel: "Send",
+  chatIntroTitle: "Hi! I'm NAWA 👋",
+  chatIntroText: "I can help the student choose an experiment, understand a concept, or walk through the simulation steps.",
+  chatLabel: "Quick suggestions",
+  chatPlaceholder: "Type your question...",
+  chatPrimary: "Help me choose an experiment",
+  chatSecondary: "Explain the science concept",
+  features: [
+    { title: "Interactive Simulations", text: "Students change variables, see results instantly, and learn through experimentation instead of memorization.", icon: "simulation" },
+    { title: "AI Learning Coach", text: "It provides instant feedback, smart hints, and contextual guidance that helps the student stay on the right track in every lab.", icon: "coach" },
+    { title: "Adaptive Assessments", text: "Each quiz is generated dynamically from the student's own actions, reinforcing understanding after practice.", icon: "assessment" }
+  ]
+});
+
+Object.assign(window.NAWA_CONTENT.ar, {
+  teacherDashboardButton: "لوحة التحكم",
+  teacherDashboardTitle: "لوحة التحكم",
+  teacherDashboardText: "مساحة خاصة بالمعلم لمتابعة الطلاب والتقدّم داخل التجارب والاختبارات القصيرة.",
+  teacherDashboardWelcome: "هذه اللوحة متاحة لحسابات المعلمين فقط، وتعرض متابعة حقيقية للنشاط داخل الصف.",
+  openQuizButton: "اختبر معلوماتك",
+  loginSubmitting: "جارٍ التحقق...",
+  loginErrorGeneric: "تعذر تسجيل الدخول. تحقق من البيانات ثم حاول مرة أخرى.",
+  loginErrorNetwork: "حدثت مشكلة في الاتصال. حاول مرة أخرى بعد قليل.",
+  teacherDashboardSearchLabel: "ابحث عن طالب أو شعبة",
+  teacherDashboardSearchPlaceholder: "ابحث بالاسم أو الصف أو التجربة",
+  teacherDashboardSortLabel: "فرز حسب",
+  teacherDashboardSortProgress: "التقدّم",
+  teacherDashboardSortScore: "النتيجة",
+  teacherDashboardSortName: "الاسم",
+  teacherDashboardLoading: "جارٍ تحميل بيانات الطلاب...",
+  teacherDashboardRetry: "إعادة المحاولة",
+  teacherDashboardEmpty: "لا يوجد طلاب مطابقون للبحث الحالي.",
+  teacherDashboardAccessDenied: "لا يمكن فتح لوحة التحكم بدون صلاحية معلم.",
+  teacherDashboardLoadError: "تعذر تحميل بيانات لوحة التحكم.",
+  teacherDashboardProgressLabel: "التقدّم",
+  teacherDashboardScoreLabel: "النتيجة",
+  experimentStart: "ابدأ التجربة"
+});
+
+Object.assign(window.NAWA_CONTENT.en, {
+  teacherDashboardButton: "Control Panel",
+  teacherDashboardTitle: "Teacher Control Panel",
+  teacherDashboardText: "A protected teacher-only space to monitor students, progress, and short assessments.",
+  teacherDashboardWelcome: "This area is available to teacher accounts only and shows live classroom activity.",
+  openQuizButton: "Test Your Knowledge",
+  loginSubmitting: "Checking...",
+  loginErrorGeneric: "Unable to sign in. Check your details and try again.",
+  loginErrorNetwork: "A network error occurred. Please try again shortly.",
+  teacherDashboardSearchLabel: "Search student or section",
+  teacherDashboardSearchPlaceholder: "Search by name, grade, or experiment",
+  teacherDashboardSortLabel: "Sort by",
+  teacherDashboardSortProgress: "Progress",
+  teacherDashboardSortScore: "Score",
+  teacherDashboardSortName: "Name",
+  teacherDashboardLoading: "Loading student data...",
+  teacherDashboardRetry: "Try again",
+  teacherDashboardEmpty: "No students match the current search.",
+  teacherDashboardAccessDenied: "Only teacher accounts can open this control panel.",
+  teacherDashboardLoadError: "Unable to load the control panel data.",
+  teacherDashboardProgressLabel: "Progress",
+  teacherDashboardScoreLabel: "Score",
+  experimentStart: "Start Experiment"
+});
+
+Object.assign(window.NAWA_CONTENT.ar, {
+  launchDemo: "ابدأ التعلّم",
+  eyebrow: "تعلّم العلوم بالتجربة، مش بالحفظ",
+  heroTitleLine1: "من نواة الفكرة",
+  heroTitleLine2Before: "",
+  heroTitleAccent: "تبدأ",
+  heroTitleLine2After: "العلوم",
+  heroText: "جرّب العلوم بدل ما تحفظها. استكشف مفاهيم الفيزياء والكيمياء والأحياء من خلال تجارب ومحاكاة تفاعلية تساعدك تفهم الفكرة وتشوفها قدّامك.",
+  heroPrimaryCta: "استكشف التجارب",
+  heroPrimaryArrow: "←",
+  heroTagsLabel: "مزايا نواة",
+  heroTags: ["محاكاة تفاعلية", "تعلّم بصري", "إرشاد ذكي"],
+  heroPhysicsText: "شاهد الحركة والقوى والطاقة من خلال محاكاة تفاعلية توضّح الفكرة خطوة بخطوة.",
+  heroChemistryText: "اخلط المواد، جرّب التفاعلات، وشاهد كيف تظهر النتائج أمامك بشكل واضح.",
+  heroBiologyText: "استكشف الخلية والجسم وDNA من خلال تجارب بصرية تقرّب لك عالم الحياة.",
+  heroStats: [
+    { value: 3, suffix: "", label: "مجالات علمية رئيسية" },
+    { value: "تفاعلية بالكامل", suffix: "", label: "تجارب رقمية سهلة وآمنة" }
+  ],
+  featuresTitle: "لماذا يتعلّم الطلاب بشكل أفضل مع نواة",
+  featuresText: "",
+  experienceTitle: "رحلة واحدة، من الفضول إلى الإتقان",
+  experienceText: "تقدّم الصفحة الرئيسية مسارًا واضحًا ومتكاملًا يساعد الطلاب والمعلمين على فهم القيمة بسرعة.",
+  faqTitle: "الأسئلة الشائعة",
+  faqText: "إجابات سريعة على أكثر الأسئلة التي قد يطرحها الطلاب والمعلمون قبل البدء.",
+  outputUnit: "شدة الإشارة",
+  experimentStart: "ابدأ",
+  chatAskLabel: "اسأل نواة",
+  chatWelcome: "مرحبًا! تحتاج مساعدة؟",
+  chatTooltip: "مساعد نواة الذكي",
+  chatCloseLabel: "إغلاق المحادثة",
+  chatSendLabel: "إرسال",
+  chatIntroTitle: "أهلًا! أنا نواة 👋",
+  chatIntroText: "أقدر أساعدك تختار تجربة، أفهّمك مفهوم علمي، أو أشرح لك خطوات المحاكاة.",
+  chatLabel: "اقتراحات سريعة",
+  chatPlaceholder: "اكتب سؤالك هنا...",
+  chatPrimary: "ساعدني أختار تجربة",
+  chatSecondary: "اشرح لي الفكرة العلمية",
+  features: [
+    { title: "محاكاة تفاعلية", text: "يغيّر الطلاب المتغيرات، ويرون النتائج مباشرة، ويتعلمون من خلال التجربة بدلًا من الحفظ.", icon: "simulation" },
+    { title: "مدرب تعلم ذكي", text: "يقدّم ملاحظات فورية وتلميحات ذكية وإرشادًا سياقيًا يساعد الطالب على البقاء على المسار الصحيح داخل كل مختبر.", icon: "coach" },
+    { title: "تقييمات متكيفة", text: "ينشأ كل اختبار ديناميكيًا من أفعال الطالب نفسها، مما يعزز الفهم بعد الممارسة.", icon: "assessment" }
+  ]
+});
+
+Object.assign(window.NAWA_CONTENT.en, {
+  launchDemo: "Start Learning",
+  eyebrow: "Learn science by trying, not memorizing",
+  heroTitleLine1: "From the nucleus of the idea",
+  heroTitleLine2Before: "",
+  heroTitleAccent: "begins",
+  heroTitleLine2After: "science",
+  heroText: "Try science instead of memorizing it. Explore physics, chemistry, and biology through interactive experiments and simulations that help students understand the idea and see it clearly.",
+  heroPrimaryCta: "Explore Experiments",
+  heroPrimaryArrow: "←",
+  heroTagsLabel: "NAWA highlights",
+  heroTags: ["Interactive simulations", "Visual learning", "Smart guidance"],
+  heroPhysicsText: "Watch motion, forces, and energy through interactive simulations that explain the idea step by step.",
+  heroChemistryText: "Mix materials, test reactions, and watch results appear clearly in front of the student.",
+  heroBiologyText: "Explore the cell, the body, and DNA through visual experiences that bring life science closer.",
+  heroStats: [
+    { value: 3, suffix: "", label: "Core science domains" },
+    { value: "Fully interactive", suffix: "", label: "Simple and safe digital experiments" }
+  ],
+  featuresTitle: "Why students learn better with NAWA",
+  featuresText: "",
+  experienceText: "The homepage presents a clear, complete path that helps students and teachers understand the value quickly.",
+  faqText: "Quick answers to the most common questions students and teachers may ask before getting started.",
+  outputUnit: "Signal strength",
+  experimentStart: "Start",
+  chatAskLabel: "Ask NAWA",
+  chatWelcome: "Welcome! Need help?",
+  chatTooltip: "NAWA AI assistant",
+  chatCloseLabel: "Close chat",
+  chatSendLabel: "Send",
+  chatIntroTitle: "Hi! I'm NAWA 👋",
+  chatIntroText: "I can help the student choose an experiment, understand a concept, or walk through the simulation steps.",
+  chatLabel: "Quick suggestions",
+  chatPlaceholder: "Type your question...",
+  chatPrimary: "Help me choose an experiment",
+  chatSecondary: "Explain the science concept",
+  features: [
+    { title: "Interactive Simulations", text: "Students change variables, see results instantly, and learn through experimentation instead of memorization.", icon: "simulation" },
+    { title: "AI Learning Coach", text: "It provides instant feedback, smart hints, and contextual guidance that helps the student stay on the right track in every lab.", icon: "coach" },
+    { title: "Adaptive Assessments", text: "Each quiz is generated dynamically from the student's own actions, reinforcing understanding after practice.", icon: "assessment" }
+  ]
+});
+Object.assign(window.NAWA_CONTENT.ar, {
+  launchDemo: "ابدأ التعلّم",
+  eyebrow: "تعلّم العلوم بالتجربة، مش بالحفظ",
+  heroTitleLine1: "من نواة الفكرة",
+  heroTitleLine2Before: "",
+  heroTitleAccent: "تبدأ",
+  heroTitleLine2After: "العلوم",
+  heroText: "جرّب العلوم بدل ما تحفظها. استكشف مفاهيم الفيزياء والكيمياء والأحياء من خلال تجارب ومحاكاة تفاعلية تساعدك تفهم الفكرة وتشوفها قدّامك.",
+  heroPrimaryCta: "استكشف التجارب",
+  heroPrimaryArrow: "←",
+  heroTagsLabel: "مزايا نواة",
+  heroTags: ["محاكاة تفاعلية", "تعلّم بصري", "إرشاد ذكي"],
+  heroPhysicsText: "شاهد الحركة والقوى والطاقة من خلال محاكاة تفاعلية توضّح الفكرة خطوة بخطوة.",
+  heroChemistryText: "اخلط المواد، جرّب التفاعلات، وشاهد كيف تظهر النتائج أمامك بشكل واضح.",
+  heroBiologyText: "استكشف الخلية والجسم وDNA من خلال تجارب بصرية تقرّب لك عالم الحياة.",
+  heroStats: [
+    { value: 3, suffix: "", label: "مجالات علمية رئيسية" },
+    { value: 100, suffix: "%", label: "تفاعلية بالكامل" }
+  ],
+  featuresTitle: "لماذا يتعلّم الطلاب بشكل أفضل مع نواة",
+  experienceTitle: "رحلة واحدة، من الفضول إلى الإتقان",
+  experienceText: "تقدّم الصفحة الرئيسية مسارًا واضحًا ومتكاملًا يساعد الطلاب والمعلمين على فهم القيمة بسرعة.",
+  faqTitle: "الأسئلة الشائعة",
+  faqText: "إجابات سريعة على أكثر الأسئلة التي قد يطرحها الطلاب والمعلمون قبل البدء.",
+  outputUnit: "شدة الإشارة",
+  experimentStart: "ابدأ",
+  chatAskLabel: "اسأل نواة",
+  chatWelcome: "مرحبًا! تحتاج مساعدة؟",
+  chatTooltip: "مساعد نواة الذكي",
+  chatCloseLabel: "إغلاق المحادثة",
+  chatSendLabel: "إرسال",
+  chatIntroTitle: "أهلًا! أنا نواة 👋",
+  chatIntroText: "أقدر أساعدك تختار تجربة، أفهّمك مفهوم علمي، أو أشرح لك خطوات المحاكاة.",
+  chatLabel: "اقتراحات سريعة",
+  chatPlaceholder: "اكتب سؤالك هنا...",
+  chatPrimary: "ساعدني أختار تجربة",
+  chatSecondary: "اشرح لي الفكرة العلمية",
+  features: [
+    { title: "محاكاة تفاعلية", text: "يغيّر الطلاب المتغيرات، ويرون النتائج مباشرة، ويتعلمون من خلال التجربة بدلًا من الحفظ.", icon: "simulation" },
+    { title: "مدرب تعلم ذكي", text: "يقدّم ملاحظات فورية وتلميحات ذكية وإرشادًا سياقيًا يساعد الطالب على البقاء على المسار الصحيح داخل كل مختبر.", icon: "coach" },
+    { title: "تقييمات متكيفة", text: "ينشأ كل اختبار ديناميكيًا من أفعال الطالب نفسها، مما يعزز الفهم بعد الممارسة.", icon: "assessment" }
+  ],
+  steps: [
+    { title: "اختر التجربة", text: "يبدأ الطالب أو المعلم باختيار المادة والتجربة المناسبة بسهولة." },
+    { title: "تفاعل مع التجربة", text: "غيّر القيم وراقب النتائج مباشرة لفهم الفكرة بشكل عملي وواضح." },
+    { title: "افهم التفسير", text: "تساعدك التوضيحات الذكية على ربط ما تراه بالمفهوم العلمي الصحيح." },
+    { title: "اختبر فهمك", text: "اختم التجربة باختبار سريع يثبت الفهم ويعزز التعلّم." }
+  ]
+});
+
+Object.assign(window.NAWA_CONTENT.en, {
+  launchDemo: "Start Learning",
+  eyebrow: "Learn science by trying, not memorizing",
+  heroTitleLine1: "From the nucleus of the idea",
+  heroTitleLine2Before: "",
+  heroTitleAccent: "begins",
+  heroTitleLine2After: "science",
+  heroText: "Try science instead of memorizing it. Explore physics, chemistry, and biology through interactive experiments and simulations that help the student understand the idea and see it clearly.",
+  heroPrimaryCta: "Explore Experiments",
+  heroPrimaryArrow: "←",
+  heroTagsLabel: "NAWA highlights",
+  heroTags: ["Interactive simulations", "Visual learning", "Smart guidance"],
+  heroPhysicsText: "Watch motion, forces, and energy through interactive simulations that explain the idea step by step.",
+  heroChemistryText: "Mix materials, test reactions, and watch results appear clearly in front of the student.",
+  heroBiologyText: "Explore the cell, the body, and DNA through visual experiences that bring life science closer.",
+  heroStats: [
+    { value: 3, suffix: "", label: "Core science domains" },
+    { value: 100, suffix: "%", label: "Fully interactive" }
+  ],
+  featuresTitle: "Why students learn better with NAWA",
+  experienceText: "The homepage presents a clear, complete path that helps students and teachers understand the value quickly.",
+  faqText: "Quick answers to the most common questions students and teachers may ask before getting started.",
+  outputUnit: "Signal strength",
+  experimentStart: "Start",
+  chatAskLabel: "Ask NAWA",
+  chatWelcome: "Welcome! Need help?",
+  chatTooltip: "NAWA AI assistant",
+  chatCloseLabel: "Close chat",
+  chatSendLabel: "Send",
+  chatIntroTitle: "Hi! I'm NAWA 👋",
+  chatIntroText: "I can help the student choose an experiment, understand a concept, or walk through the simulation steps.",
+  chatLabel: "Quick suggestions",
+  chatPlaceholder: "Type your question...",
+  chatPrimary: "Help me choose an experiment",
+  chatSecondary: "Explain the science concept",
+  features: [
+    { title: "Interactive Simulations", text: "Students change variables, see results instantly, and learn through experimentation instead of memorization.", icon: "simulation" },
+    { title: "AI Learning Coach", text: "It provides instant feedback, smart hints, and contextual guidance that helps the student stay on the right track in every lab.", icon: "coach" },
+    { title: "Adaptive Assessments", text: "Each quiz is generated dynamically from the student's own actions, reinforcing understanding after practice.", icon: "assessment" }
+  ]
+});
+
+window.NAWA_CONTENT.ar.materials = (window.NAWA_CONTENT.ar.materials || []).map((material) => material.id === "physics" ? {
+  ...material,
+  labText: "اسحب المغناطيس داخل الملف، وزد عدد اللفات، وشاهد الإشارة المستحثة ترتفع مع تغيّر المجال المغناطيسي.",
+  experiments: (material.experiments || []).map((experiment, index) => index === 0 ? {
+    ...experiment,
+    text: "حرّك المغناطيس عبر الملف وقارن قوة الإشارة المستحثة."
+  } : experiment)
+} : material);
+
+window.NAWA_CONTENT.en.materials = (window.NAWA_CONTENT.en.materials || []).map((material) => material.id === "physics" ? {
+  ...material,
+  labText: "Drag the magnet through the coil, increase the number of turns, and watch the induced signal rise as the magnetic field changes.",
+  experiments: (material.experiments || []).map((experiment, index) => index === 0 ? {
+    ...experiment,
+    text: "Move the magnet through the coil and compare the strength of the induced signal."
+  } : experiment)
+} : material);
+
+Object.assign(window.NAWA_CONTENT.en, {
+  featuresText: "",
+  experienceText: "The homepage presents a clear, complete path that helps students and teachers understand the value quickly.",
+  faqText: "Quick answers to the most common questions students and teachers may ask before getting started.",
+  outputUnit: "Signal strength",
+  experimentStart: "Start",
+  steps: [
+    { title: "Choose the experiment", text: "The student or teacher starts by choosing the right subject and experiment with ease." },
+    { title: "Interact with the lab", text: "Adjust the values and watch the results instantly to understand the concept in a practical, clear way." },
+    { title: "Understand the explanation", text: "Smart guidance helps connect what the student sees to the correct scientific concept." },
+    { title: "Test understanding", text: "Finish the experiment with a quick quiz that reinforces learning and confirms understanding." }
+  ],
+  features: [
+    { title: "Interactive Simulations", text: "Students change variables, see results instantly, and learn through experimentation instead of memorization.", icon: "simulation" },
+    { title: "AI Learning Coach", text: "It provides instant feedback, smart hints, and contextual guidance that helps the student stay on the right track in every lab.", icon: "coach" },
+    { title: "Adaptive Assessments", text: "Each quiz is generated dynamically from the student's own actions, reinforcing understanding after practice.", icon: "assessment" }
+  ]
+});
+
+Object.assign(window.NAWA_CONTENT.ar, {
+  featuresText: "",
+  experimentStart: "ابدأ"
+});
+
+window.NAWA_CONTENT.en.materials = (window.NAWA_CONTENT.en.materials || []).map((material) => material.id === "physics" ? {
+  ...material,
+  labText: "Drag the magnet through the coil, increase the number of turns, and watch the induced signal rise as the magnetic field changes.",
+  experiments: (material.experiments || []).map((experiment, index) => index === 0 ? {
+    ...experiment,
+    text: "Move the magnet through the coil and compare the strength of the induced signal."
+  } : experiment)
+} : material);
+
+Object.assign(window.NAWA_CONTENT.ar, {
+  experienceTitle: "رحلة واحدة، من الفضول إلى الإتقان",
+  experienceText: "تقدّم الصفحة الرئيسية مسارًا واضحًا ومتكاملًا يساعد الطلاب والمعلمين على فهم القيمة بسرعة.",
+  faqText: "إجابات سريعة على أكثر الأسئلة التي قد يطرحها الطلاب والمعلمون قبل البدء.",
+  outputUnit: "شدة الإشارة",
+  steps: [
+    { title: "اختر التجربة", text: "يبدأ الطالب أو المعلم باختيار المادة والتجربة المناسبة بسهولة." },
+    { title: "تفاعل مع التجربة", text: "غيّر القيم وراقب النتائج مباشرة لفهم الفكرة بشكل عملي وواضح." },
+    { title: "افهم التفسير", text: "تساعدك التوضيحات الذكية على ربط ما تراه بالمفهوم العلمي الصحيح." },
+    { title: "اختبر فهمك", text: "اختم التجربة باختبار سريع يثبت الفهم ويعزز التعلّم." }
+  ],
   bioDnaLabTitle: "\u0645\u062e\u062a\u0628\u0631 \u0627\u0644\u0623\u062d\u064a\u0627\u0621 - \u062a\u0636\u0627\u0639\u0641 DNA",
   bioDnaTag: "\u0645\u062d\u0627\u0643\u0627\u0629 \u062a\u0636\u0627\u0639\u0641 DNA",
   bioDnaLabName: "\u0648\u0631\u0634\u0629 \u062a\u0636\u0627\u0639\u0641 DNA",
@@ -242,6 +620,15 @@ window.NAWA_CONTENT.ar.materials = (window.NAWA_CONTENT.ar.materials || []).map(
   ]
 } : material);
 
+window.NAWA_CONTENT.ar.materials = (window.NAWA_CONTENT.ar.materials || []).map((material) => material.id === "physics" ? {
+  ...material,
+  labText: "اسحب المغناطيس داخل الملف، وزد عدد اللفات، وشاهد الإشارة المستحثة ترتفع مع تغيّر المجال المغناطيسي.",
+  experiments: (material.experiments || []).map((experiment, index) => index === 0 ? {
+    ...experiment,
+    text: "حرّك المغناطيس عبر الملف وقارن قوة الإشارة المستحثة."
+  } : experiment)
+} : material);
+
 Object.assign(window.NAWA_CONTENT.en, {
   eyebrow: "Futuristic science learning built around one living core",
   heroTitleBefore: "From the",
@@ -360,5 +747,52 @@ Object.assign(window.NAWA_CONTENT.ar, {
   loginPasswordLabel: "كلمة المرور",
   loginPasswordPlaceholder: "أدخل كلمة المرور",
   loginFormNote: "استخدم البريد الإلكتروني وكلمة المرور للمتابعة.",
-  loginMemberHelper: "المعلم والطالب يسجلان الدخول باستخدام البريد الإلكتروني وكلمة المرور."
+  loginMemberHelper: "المعلم والطالب يسجلان الدخول باستخدام البريد الإلكتروني وكلمة المرور.",
+  features: [
+    { title: "محاكاة تفاعلية", text: "يغيّر الطلاب المتغيرات، ويرون النتائج مباشرة، ويتعلمون من خلال التجربة بدلًا من الحفظ.", icon: "simulation" },
+    { title: "مدرب تعلم ذكي", text: "يقدّم ملاحظات فورية وتلميحات ذكية وإرشادًا سياقيًا يساعد الطالب على البقاء على المسار الصحيح داخل كل مختبر.", icon: "coach" },
+    { title: "تقييمات متكيفة", text: "ينشأ كل اختبار ديناميكيًا من أفعال الطالب نفسها، مما يعزز الفهم بعد الممارسة.", icon: "assessment" }
+  ]
+});
+Object.assign(window.NAWA_CONTENT.ar, {
+  contactTitle: "جهة الاتصال",
+  contactNameLabel: "الاسم",
+  contactEmailLabel: "الإيميل",
+  contactName: "سلمى معاذ حسن",
+  contactEmail: "salmajawabreh26@gmail.com",
+  secondaryContactTitle: "باقي التيم",
+  secondaryContactName: "محمد ملكاوي",
+  secondaryContactEmail: "mo.malkawi4@gmail.com",
+  teamContacts: [
+    { title: "جهة الاتصال", name: "سلمى معاذ حسن", email: "salmajawabreh26@gmail.com" },
+    { title: "جهة اتصال", name: "محمد ملكاوي", email: "mo.malkawi4@gmail.com" },
+    { title: "جهة اتصال", name: "تسنيم السرور", email: "tasneemsros05@gmail.com" }
+  ]
+});
+
+Object.assign(window.NAWA_CONTENT.en, {
+  contactTitle: "Contact",
+  contactNameLabel: "Name",
+  contactEmailLabel: "Email",
+  contactName: "Salma Moath Hasan",
+  contactEmail: "salmajawabreh26@gmail.com",
+  secondaryContactTitle: "Team",
+  secondaryContactName: "Mohammad Malkawi",
+  secondaryContactEmail: "mo.malkawi4@gmail.com",
+  teamContacts: [
+    { title: "Contact", name: "Salma Moath Hasan", email: "salmajawabreh26@gmail.com" },
+    { title: "Contact", name: "Mohammad Malkawi", email: "mo.malkawi4@gmail.com" },
+    { title: "Contact", name: "Tasneem Al-Surour", email: "tasneemsros05@gmail.com" }
+  ]
+});
+Object.assign(window.NAWA_CONTENT.ar, {
+  heroStats: [
+    { value: 3, suffix: "", label: "مجالات علمية رئيسية" }
+  ]
+});
+
+Object.assign(window.NAWA_CONTENT.en, {
+  heroStats: [
+    { value: 3, suffix: "", label: "Core science domains" }
+  ]
 });

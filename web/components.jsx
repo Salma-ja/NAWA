@@ -2,8 +2,10 @@ const { useEffect, useState } = React;
 
 const Counter = ({ target, suffix = "", duration = 1600 }) => {
   const [count, setCount] = useState(0);
+  const isNumericTarget = Number.isFinite(target);
 
   useEffect(() => {
+    if (!isNumericTarget) return undefined;
     let frame;
     const start = performance.now();
     const step = (time) => {
@@ -13,7 +15,9 @@ const Counter = ({ target, suffix = "", duration = 1600 }) => {
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);
-  }, [target, duration]);
+  }, [duration, isNumericTarget, target]);
+
+  if (!isNumericTarget) return <>{target}</>;
 
   return <>{count}{suffix}</>;
 };
@@ -170,49 +174,62 @@ const HeroSection = ({ c, rotation }) => {
       title: c.heroPhysicsTitle || "Physics",
       text: c.heroPhysicsText || c.experimentList?.[1]?.text || "",
       badge: c.heroPhysicsBadge || c.physicsLabTag || "Physics",
-      style: { top: "8%", right: "8%" }
+      style: { top: "10%", right: "9%" },
+      prominent: true
     },
     {
       key: "chemistry",
       title: c.heroChemistryTitle || "Chemistry",
       text: c.heroChemistryText || c.materials?.find((item) => item.id === "chemistry")?.experiments?.[0]?.text || "",
       badge: c.heroChemistryBadge || "Chemistry",
-      style: { bottom: "18%", right: "2%" }
+      style: { bottom: "15%", right: "4%" }
     },
     {
       key: "biology",
       title: c.heroBiologyTitle || "Biology",
       text: c.heroBiologyText || c.materials?.find((item) => item.id === "biology")?.experiments?.[0]?.text || "",
       badge: c.heroBiologyBadge || "Biology",
-      style: { bottom: "6%", left: "4%" }
+      style: { bottom: "9%", left: "8%" }
     }
   ];
+  const hasCustomHeroLines = c.heroTitleLine1 && c.heroTitleAccent;
 
   return (
     <main id="home" className="hero hero-nucleus">
       <div className="hero-copy">
         <div className="eyebrow">
-          <span>*</span>
+          <span className="eyebrow-dot" aria-hidden="true"></span>
           <span>{c.eyebrow}</span>
         </div>
-        <h1>{c.heroTitleBefore} <span>{c.heroTitleAccent}</span><br />{c.heroTitleAfter}</h1>
+        <h1>
+          {hasCustomHeroLines ? (
+            <>
+              <span className="hero-line">{c.heroTitleLine1}</span>
+              <span className="hero-line">
+                {c.heroTitleLine2Before ? `${c.heroTitleLine2Before} ` : ""}
+                <span>{c.heroTitleAccent}</span>
+                {c.heroTitleLine2After ? ` ${c.heroTitleLine2After}` : ""}
+              </span>
+            </>
+          ) : (
+            <>{c.heroTitleBefore} <span>{c.heroTitleAccent}</span><br />{c.heroTitleAfter}</>
+          )}
+        </h1>
         <p>{c.heroText}</p>
         <div className="hero-actions">
-          <a className="btn btn-primary" href="#experience">{c.heroPrimaryCta || c.start}</a>
+          <a className="btn btn-primary hero-cta" href="#experience">
+            <span>{c.heroPrimaryCta || c.start}</span>
+            <span aria-hidden="true">{c.heroPrimaryArrow || "\u2190"}</span>
+          </a>
         </div>
-        <div className="hero-tag-row">
+        <ul className="hero-tag-row" aria-label={c.heroTagsLabel || "Highlights"}>
           {heroTags.map((tag) => (
-            <span className="hero-tag" key={tag}>{tag}</span>
+            <li className="hero-tag" key={tag}>
+              <span className="hero-tag-icon" aria-hidden="true">✓</span>
+              <span>{tag}</span>
+            </li>
           ))}
-        </div>
-        <div className="hero-stats">
-          {c.stats.slice(1).map((stat) => (
-            <div className="stat" key={stat.label}>
-              <div className="stat-value"><Counter target={stat.value} suffix={stat.suffix} /></div>
-              <div className="stat-label">{stat.label}</div>
-            </div>
-          ))}
-        </div>
+        </ul>
       </div>
       <div className="hero-visual">
         <div className="dashboard hero-lab">
@@ -235,7 +252,7 @@ const HeroSection = ({ c, rotation }) => {
               <div className="nucleus-orbit-dot orbit-dot-c"></div>
             </div>
             {scienceNodes.map((node) => (
-              <article className={`science-preview ${node.key}`} key={node.key} style={node.style}>
+              <article className={`science-preview ${node.key} ${node.prominent ? "prominent" : "muted"}`} key={node.key} style={node.style}>
                 <div className="science-preview-art"><HeroScienceGlyph type={node.key} /></div>
                 <div className="science-preview-copy">
                   <span className="science-preview-badge">{node.badge}</span>
@@ -254,7 +271,7 @@ const HeroSection = ({ c, rotation }) => {
 
 const FeaturesSection = ({ c }) => (
   <section id="features">
-    <div className="section-head"><div><h2>{c.featuresTitle}</h2><p>{c.featuresText}</p></div></div>
+    <div className="section-head"><div><h2>{c.featuresTitle}</h2></div></div>
     <div className="grid-3">
       {c.features.map((feature) => (
         <article className="card" key={feature.title}>
@@ -927,26 +944,17 @@ const DNAReplicationSimulation = ({ c, currentMaterial, resetBiologyExperiment }
 };
 
 const BiologySimulationV2 = ({ c, currentMaterial, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, selectedExperimentIndex }) => {
-  // Every hook must run on every render. Switching from experiment 01 to 02
-  // keeps this same component mounted, so an early return placed above a hook
-  // would change the hook count and crash React.
-  const [insideLeaf, setInsideLeaf] = useState(false);
-
   if (selectedExperimentIndex === 1) {
     return <DNAReplicationSimulation c={c} currentMaterial={currentMaterial} resetBiologyExperiment={resetBiologyExperiment} />;
   }
 
+  const [insideLeaf, setInsideLeaf] = useState(false);
   const visualState = bioSettings.lightOn ? "healthy" : "wilted";
   const plantStateLabel = visualState === "healthy" ? c.bioHealthy : c.bioWilted;
-
-  // In the light, photosynthesis dominates: CO2 is taken in, O2 given off.
-  // In the dark only respiration runs, so the two reverse. ATP is always made.
-  const IN = "↓";
-  const OUT = "↑";
   const moleculeStatus = [
-    { label: "CO2", arrow: bioSettings.lightOn ? IN : OUT, tone: "co2", hint: bioSettings.lightOn ? c.bioLeafCo2 : c.bioLeafRespiration },
-    { label: "O2", arrow: bioSettings.lightOn ? OUT : IN, tone: "o2", hint: bioSettings.lightOn ? c.bioLeafO2 : c.bioLeafRespiration },
-    { label: "ATP", arrow: OUT, tone: "atp", hint: c.bioLeafAtp }
+    { label: "CO2", arrow: bioSettings.lightOn ? "?" : "?", tone: "co2", hint: bioSettings.lightOn ? c.bioLeafCo2 : c.bioLeafRespiration },
+    { label: "O2", arrow: bioSettings.lightOn ? "?" : "?", tone: "o2", hint: bioSettings.lightOn ? c.bioLeafO2 : c.bioLeafRespiration },
+    { label: "ATP", arrow: "?", tone: "atp", hint: c.bioLeafAtp }
   ];
 
   return (
@@ -959,12 +967,7 @@ const BiologySimulationV2 = ({ c, currentMaterial, bioSettings, setBioSettings, 
         <div className="bio-next-controls-list">
           <div className="bio-next-control">
             <div className="bio-next-control-head">
-              <span className="bio-next-control-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="4"></circle>
-                  <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path>
-                </svg>
-              </span>
+              <span className="bio-next-control-icon" aria-hidden="true">??</span>
               <div>
                 <strong>{c.bioLightLabel}</strong>
                 <span>{bioSettings.lightOn ? c.bioOn : c.bioOff}</span>
@@ -1841,7 +1844,7 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
   );
 };
 
-const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dragging, setDragging, handleStagePointer, coilLoopOffsets, bulbPower, magnetSvgX, inducedSignal, coilTurns, magnetX, setCoilTurns, updateMagnetPosition, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, chemSettings, setChemSettings, chemMetrics, chemTrend, resetChemistryExperiment, onOpenQuiz, onSelectExperiment }) => {
+const ExperimentSection = ({ c, activeProfile, activeMaterial, setActiveMaterial, stageRef, dragging, setDragging, handleStagePointer, coilLoopOffsets, bulbPower, magnetSvgX, inducedSignal, coilTurns, magnetX, setCoilTurns, updateMagnetPosition, bioSettings, setBioSettings, bioMetrics, bioTrend, resetBiologyExperiment, chemSettings, setChemSettings, chemMetrics, chemTrend, resetChemistryExperiment, onOpenQuiz }) => {
   const materials = Array.isArray(c.materials) ? c.materials : [];
   const currentMaterial = materials.find((material) => material.id === activeMaterial) || materials[0];
   const [selectedExperimentIndex, setSelectedExperimentIndex] = useState(null);
@@ -1953,19 +1956,6 @@ const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dra
     setSelectedExperimentIndex(null);
   }, [activeMaterial]);
 
-  // Report the open experiment upward so the AI tutor knows the student's context.
-  // Runs before the early return below, so the hook order stays stable.
-  useEffect(() => {
-    if (typeof onSelectExperiment !== "function") return;
-    if (selectedExperimentIndex === null) {
-      onSelectExperiment(null);
-      return;
-    }
-    const list = Array.isArray(currentMaterial?.experiments) ? currentMaterial.experiments : [];
-    const item = list[selectedExperimentIndex];
-    onSelectExperiment({ index: selectedExperimentIndex, title: item?.title || "" });
-  }, [selectedExperimentIndex, currentMaterial, onSelectExperiment]);
-
   if (!currentMaterial) return null;
   const isPhysics = currentMaterial.id === "physics";
   const isChemistry = currentMaterial.id === "chemistry";
@@ -1979,6 +1969,7 @@ const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dra
   const isPhysicsInduction = isPhysics && selectedExperimentIndex !== 1;
   const isRtl = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
   const isChemistryIon = isChemistry && selectedExperimentIndex === 1;
+  const canOpenQuiz = activeProfile?.role === "student";
   const experimentLabTitle = isPhysics && selectedExperimentIndex === 1
     ? (isRtl ? "مختبر الفيزياء • الزخم الخطي" : c.physicsCollisionLabTitle)
     : isChemistryIon
@@ -2042,7 +2033,22 @@ const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dra
                   <strong>{parts.title}</strong>
                 </div>
                 <span>{item.text}</span>
-                <button className="micro-btn experiment-start-btn" type="button" onClick={() => setSelectedExperimentIndex(selectedExperimentIndex === index ? null : index)}>{c.experimentStart}</button>
+                <div className="experiment-card-actions">
+                  <button className="micro-btn experiment-start-btn" type="button" onClick={() => setSelectedExperimentIndex(selectedExperimentIndex === index ? null : index)}>{c.experimentStart}</button>
+                  {canOpenQuiz ? (
+                    <button
+                      className="micro-btn experiment-quiz-btn"
+                      type="button"
+                      onClick={() => onOpenQuiz({
+                        materialId: currentMaterial.id,
+                        materialLabel: currentMaterial.label,
+                        experimentTitle: item.title
+                      })}
+                    >
+                      {c.openQuizButton}
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <div className="experiment-card-art">
                 {currentMaterial.id === "physics" && index === 1
@@ -2072,20 +2078,6 @@ const ExperimentSection = ({ c, activeMaterial, setActiveMaterial, stageRef, dra
               </div>
             </div>
             <p><strong>{experimentLabName}</strong> - {experimentLabText}</p>
-          </div>
-          <div className="lab-top-actions">
-            <button
-              className="micro-btn"
-              type="button"
-              onClick={() => onOpenQuiz({
-                materialId: currentMaterial.id,
-                materialLabel: currentMaterial.label,
-                experimentTitle: selectedExperiment.title,
-                experimentIndex: selectedExperimentIndex
-              })}
-            >
-              {c.openQuizButton}
-            </button>
           </div>
         </div>
         {isPhysicsInduction ? (
@@ -2166,414 +2158,60 @@ const FooterSection = ({ c }) => (
   <footer className="footer" id="contact">
     <div className="footer-summary">{c.footer.map((item) => <div key={item}>{item}</div>)}</div>
     <div className="contact-cards">
-      <div className="contact-card"><strong>{c.contactTitle}</strong><div>{c.contactNameLabel}: {c.contactName}</div><div>{c.contactPhoneLabel}: {c.contactPhone}</div><div>{c.contactLinkedInLabel}: <a href="https://www.linkedin.com/in/salma-moath-/?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3B6PS4y5SvTTy8eCqiFVwt1g%3D%3D" target="_blank" rel="noreferrer">linkedin.com/in/salma-moath-</a></div></div>
-      <div className="contact-card"><strong>{c.contactTitle}</strong><div>{c.contactNameLabel}: {c.secondaryContactName}</div><div>{c.contactPhoneLabel}: {c.secondaryContactPhone}</div></div>
+      {(c.teamContacts || [
+        { title: c.contactTitle, name: c.contactName, email: c.contactEmail },
+        { title: c.secondaryContactTitle || c.contactTitle, name: c.secondaryContactName, email: c.secondaryContactEmail }
+      ]).map((person) => (
+        <div className="contact-card" key={`${person.name}-${person.email}`}>
+          <strong>{person.title}</strong>
+          <div>{c.contactNameLabel}: {person.name}</div>
+          <div>{c.contactEmailLabel}: <a href={`mailto:${person.email}`}>{person.email}</a></div>
+        </div>
+      ))}
     </div>
   </footer>
 );
 
-/**
- * Strips markdown and LaTeX from a reply before display.
- *
- * The system prompt asks for plain text, but models drift back into "**bold**",
- * "### headings" and \frac{a}{b} math. The chat bubble renders no formatting, so
- * that markup reaches the student as literal punctuation -- and in right-to-left
- * Arabic the reversed formula fragments are unreadable. Cleaning it here means
- * the display is correct whichever model or provider is configured.
- */
-const cleanReplyText = (raw) => {
-  let text = String(raw || "");
-
-  // LaTeX delimiters and the commands that usually sit inside them.
-  text = text.replace(/\\[()[\]]/g, "");
-  text = text.replace(/\$\$?/g, "");
-  text = text.replace(/\\frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1) / ($2)");
-  text = text.replace(/\\(?:text|mathrm|mathbf|textbf)\s*\{([^{}]*)\}/g, "$1");
-  text = text.replace(/\\(?:cdot|times)\b/g, "x");
-  text = text.replace(/\\(?:leq|le)\b/g, "<=");
-  text = text.replace(/\\(?:geq|ge)\b/g, ">=");
-  text = text.replace(/\\(?:rightarrow|to|Rightarrow)\b/g, "->");
-  text = text.replace(/\\[a-zA-Z]+/g, "");        // any remaining \command
-  text = text.replace(/[{}]/g, "");
-
-  // Markdown emphasis, headings, code fences and bullets.
-  text = text.replace(/```[a-zA-Z]*\n?/g, "");
-  text = text.replace(/`([^`]+)`/g, "$1");
-  text = text.replace(/\*\*\*([^*]+)\*\*\*/g, "$1");
-  text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
-  text = text.replace(/(^|\s)\*([^*\n]+)\*(?=\s|$|[.,!?:;])/g, "$1$2");
-  text = text.replace(/^\s{0,3}#{1,6}\s*/gm, "");
-  text = text.replace(/^\s*[*+]\s+/gm, "- ");
-  text = text.replace(/^\s*>\s?/gm, "");
-
-  // Tidy the whitespace the substitutions leave behind.
-  text = text.replace(/[ \t]{2,}/g, " ");
-  text = text.replace(/ +$/gm, "");
-  text = text.replace(/\n{3,}/g, "\n\n");
-
-  return text.trim();
-};
-
-/** Renders the agent's reply as plain text, preserving its line breaks. */
-const ChatMessageBody = ({ text }) => (
-  <>
-    {cleanReplyText(text).split("\n").map((line, index) => (
-      <span key={index} className="ai-chat-line">{line}</span>
-    ))}
-  </>
-);
-
-/**
- * A scored quiz inside the chat.
- *
- * The questions come from the model, but the marking is done here in plain
- * JavaScript against the answer index the API returned. Asking the model to
- * remember which letter was correct across turns proved unreliable, and a
- * tutor that marks a right answer wrong is worse than no tutor at all.
- */
-const ChatQuizCard = ({ c, questions }) => {
-  const [picked, setPicked] = useState({});
-  const answeredCount = Object.keys(picked).length;
-  const score = questions.reduce(
-    (total, question, index) => total + (picked[index] === question.answer ? 1 : 0),
-    0
-  );
-
-  return (
-    <div className="ai-chat-quiz">
-      <div className="ai-chat-quiz-head">
-        <strong>{c.quizAiBadge}</strong>
-        <span>{c.quizScoreLabel}: {score}/{questions.length}</span>
-      </div>
-      {questions.map((question, index) => {
-        const chosen = picked[index];
-        const answered = chosen !== undefined;
-        return (
-          <div className="ai-chat-quiz-q" key={index}>
-            <div className="ai-chat-quiz-prompt">{index + 1}. {question.prompt}</div>
-            {question.options.map((option, optionIndex) => {
-              const state = !answered
-                ? ""
-                : optionIndex === question.answer
-                  ? "correct"
-                  : optionIndex === chosen
-                    ? "wrong"
-                    : "";
-              return (
-                <button
-                  key={optionIndex}
-                  type="button"
-                  className={`ai-chat-quiz-option ${state}`}
-                  disabled={answered}
-                  onClick={() => setPicked((current) => ({ ...current, [index]: optionIndex }))}
-                >
-                  {option}
-                </button>
-              );
-            })}
-            {answered ? (
-              <div className="ai-chat-quiz-feedback">
-                <strong>{chosen === question.answer ? c.quizAnswerCorrect : c.quizAnswerWrong}</strong>
-                {question.explanation ? <span>{question.explanation}</span> : null}
-              </div>
-            ) : null}
-          </div>
-        );
-      })}
-      {answeredCount === questions.length ? (
-        <div className="ai-chat-quiz-total">{c.quizScoreLabel}: {score}/{questions.length}</div>
-      ) : null}
-    </div>
-  );
-};
-
-const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language }) => {
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState(null);
-  const [lastAttempt, setLastAttempt] = useState("");
-  const [expanded, setExpanded] = useState(false);
-  const scrollRef = React.useRef(null);
-  const inputRef = React.useRef(null);
-
-  // Keep the newest message in view as the conversation grows.
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, pending, error]);
+const ChatWidget = ({ c, chatOpen, setChatOpen }) => {
+  const [welcomeVisible, setWelcomeVisible] = useState(true);
 
   useEffect(() => {
-    if (chatOpen && inputRef.current) inputRef.current.focus();
-  }, [chatOpen]);
-
-  const send = async (rawText) => {
-    const text = String(rawText || "").trim();
-    if (!text || pending) return;
-
-    // The full prior exchange goes with every request, so the agent can
-    // resolve follow-ups like "why?" against what was already said.
-    const history = messages
-      .filter((item) => item.role !== "quiz")
-      .map((item) => ({ role: item.role, content: item.content }));
-
-    setMessages((current) => [...current, { role: "user", content: text }]);
-    setInput("");
-    setError(null);
-    setLastAttempt(text);
-    setPending(true);
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history, labContext, language, stream: true })
-      });
-
-      // Errors come back as JSON even when streaming was requested.
-      if (!response.ok || !response.body || !(response.headers.get("content-type") || "").includes("text/event-stream")) {
-        const payload = await response.json().catch(() => ({}));
-        setError(payload.error === "not_configured" ? c.chatNotConfigured : payload.message || c.chatErrorGeneric);
-        return;
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let answer = "";
-      let started = false;
-      let streamFailed = false;
-
-      const pushAnswer = () => {
-        setMessages((current) => {
-          const next = [...current];
-          next[next.length - 1] = { role: "assistant", content: answer };
-          return next;
-        });
-      };
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // Consume only whole "data:" lines; a chunk may end mid-line.
-        let newline;
-        while ((newline = buffer.indexOf("\n")) !== -1) {
-          const line = buffer.slice(0, newline).trim();
-          buffer = buffer.slice(newline + 1);
-          if (!line.startsWith("data:")) continue;
-
-          const raw = line.slice(5).trim();
-          if (raw === "[DONE]") continue;
-
-          let frame;
-          try {
-            frame = JSON.parse(raw);
-          } catch {
-            continue;
-          }
-
-          if (frame.error) {
-            streamFailed = true;
-            continue;
-          }
-          if (typeof frame.t !== "string") continue;
-
-          answer += frame.t;
-          if (!started) {
-            // First token: swap the typing dots for a real message bubble.
-            started = true;
-            setPending(false);
-            setMessages((current) => [...current, { role: "assistant", content: answer }]);
-          } else {
-            pushAnswer();
-          }
-        }
-      }
-
-      // Surface a broken stream even when some text arrived, so a truncated
-      // answer is never mistaken for a complete one.
-      if (streamFailed || !answer) setError(c.chatErrorGeneric);
-    } catch {
-      setError(c.chatErrorGeneric);
-    } finally {
-      setPending(false);
-    }
-  };
-
-  /** The "Quiz me" button: structured questions, marked locally. */
-  const runQuiz = async () => {
-    if (pending) return;
-    setMessages((current) => [...current, { role: "user", content: c.chatQuickQuiz }]);
-    setError(null);
-    setLastAttempt("");
-    setPending(true);
-
-    try {
-      const response = await fetch("/api/quiz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          materialId: labContext?.materialId,
-          experimentIndex: labContext?.experimentIndex,
-          experimentTitle: labContext?.experimentTitle,
-          language
-        })
-      });
-      const payload = await response.json().catch(() => ({}));
-
-      if (!response.ok || !Array.isArray(payload.questions) || !payload.questions.length) {
-        setError(payload.error === "not_configured" ? c.chatNotConfigured : payload.message || c.quizAiFailed);
-        return;
-      }
-      setMessages((current) => [...current, { role: "quiz", questions: payload.questions }]);
-    } catch {
-      setError(c.quizAiFailed);
-    } finally {
-      setPending(false);
-    }
-  };
-
-  const retry = () => {
-    if (!lastAttempt) return;
-    // Drop the user turn that failed, then resend it.
-    setMessages((current) => {
-      const last = current[current.length - 1];
-      return last && last.role === "user" ? current.slice(0, -1) : current;
-    });
-    send(lastAttempt);
-  };
-
-  const startNewChat = () => {
-    setMessages([]);
-    setError(null);
-    setInput("");
-    setLastAttempt("");
-  };
-
-  const quickActions = [
-    { label: c.chatQuickExplain, run: () => send(c.chatQuickExplain) },
-    { label: c.chatQuickHint, run: () => send(c.chatQuickHint) },
-    { label: c.chatQuickQuiz, run: runQuiz }
-  ].filter((action) => action.label);
-  const contextLabel = labContext?.experimentTitle
-    ? `${c.chatContextPrefix} ${labContext.experimentTitle}`
-    : c.chatContextNone;
+    const timer = window.setTimeout(() => setWelcomeVisible(false), 4200);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <div className="ai-chat-widget">
-      {chatOpen ? (
-        <div className={`ai-chat-panel ${expanded ? "expanded" : ""}`}>
-          <div className="ai-chat-head">
-            <div className="ai-chat-head-id">
-              <span className="ai-chat-head-mark" aria-hidden="true"><OrbitMark /></span>
-              <div>
-                <div className="ai-chat-mini-name">{c.chatName}</div>
-                <div className="ai-chat-context">{contextLabel}</div>
-              </div>
-            </div>
-            <div className="ai-chat-head-actions">
-              {messages.length ? (
-                <button className="ai-chat-new" onClick={startNewChat} type="button">{c.chatClear}</button>
-              ) : null}
-              <button
-                className="ai-chat-expand"
-                onClick={() => setExpanded((current) => !current)}
-                aria-label={expanded ? c.chatCollapse : c.chatExpand}
-                title={expanded ? c.chatCollapse : c.chatExpand}
-                type="button"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  {expanded ? (
-                    <><path d="M9 3v6H3"></path><path d="M15 21v-6h6"></path></>
-                  ) : (
-                    <><path d="M3 9V3h6"></path><path d="M21 15v6h-6"></path></>
-                  )}
-                </svg>
-              </button>
-              <button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label="Close chat" type="button">x</button>
-            </div>
+      {!chatOpen ? (
+        <>
+          {welcomeVisible ? <div className="ai-chat-welcome">{c.chatWelcome}</div> : null}
+          <div className="ai-chat-trigger-wrap">
+            <button className="ai-chat-trigger" onClick={() => setChatOpen(true)} aria-label={c.chatTooltip} title={c.chatTooltip} type="button">
+              <span className="ai-chat-trigger-icon" aria-hidden="true">
+                <OrbitMark />
+              </span>
+              <span className="ai-chat-trigger-chatmark" aria-hidden="true">💬</span>
+            </button>
           </div>
-
-          <div className="ai-chat-scroll" ref={scrollRef}>
-            {messages.length === 0 ? (
-              <>
-                <div className="ai-chat-bubble">{c.chatWelcome}</div>
-                <div className="ai-chat-section-label">{c.chatLabel}</div>
-                <div className="ai-chat-actions">
-                  {quickActions.map((action) => (
-                    <button key={action.label} className="ai-chat-action" type="button" onClick={action.run}>
-                      <span>{action.label}</span>
-                      <span className="ai-chat-action-arrow">{">"}</span>
-                    </button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              messages.map((item, index) => (
-                item.role === "quiz" ? (
-                  <ChatQuizCard key={index} c={c} questions={item.questions} />
-                ) : (
-                  <div key={index} className={`ai-chat-msg ${item.role}`}>
-                    <ChatMessageBody text={item.content} />
-                  </div>
-                )
-              ))
-            )}
-
-            {pending ? (
-              <div className="ai-chat-msg assistant pending">
-                <span className="ai-chat-dot"></span>
-                <span className="ai-chat-dot"></span>
-                <span className="ai-chat-dot"></span>
-                <span className="ai-chat-thinking">{c.chatThinking}</span>
-              </div>
-            ) : null}
-
-            {error ? (
-              <div className="ai-chat-error">
-                <span>{error}</span>
-                {lastAttempt ? (
-                  <button className="ai-chat-retry" type="button" onClick={retry}>{c.chatRetry}</button>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-
-          <form
-            className="ai-chat-input"
-            onSubmit={(event) => {
-              event.preventDefault();
-              send(input);
-            }}
-          >
-            <div className="ai-chat-input-shell">
-              <input
-                ref={inputRef}
-                className="ai-chat-field"
-                type="text"
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder={c.chatPlaceholder}
-                aria-label={c.chatPlaceholder}
-                disabled={pending}
-                maxLength={1200}
-              />
-              <button className="ai-chat-send" type="submit" aria-label={c.chatSendLabel} disabled={pending || !input.trim()}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
-              </button>
-            </div>
-            <div className="ai-chat-disclaimer">{c.chatDisclaimer}</div>
-          </form>
-        </div>
+        </>
       ) : (
-        <button className="ai-chat-trigger" onClick={() => setChatOpen(true)} aria-label="Open NAWA AI Coach" type="button"><OrbitMark /></button>
+        <div className="ai-chat-panel">
+          <div className="ai-chat-head simple">
+            <div className="ai-chat-mini-name">{c.chatName}</div>
+            <button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label={c.chatCloseLabel || "Close chat"} type="button">×</button>
+          </div>
+          <div className="ai-chat-bubble ai-chat-bubble-intro">{c.chatIntroTitle}<br />{c.chatIntroText}</div>
+          <div className="ai-chat-bubble">{c.chatMessage}</div>
+          <div className="ai-chat-section-label">{c.chatLabel}</div>
+          <div className="ai-chat-actions"><button className="ai-chat-action" type="button"><span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">{">"}</span></button><button className="ai-chat-action" type="button"><span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">{">"}</span></button></div>
+          <div className="ai-chat-input"><div className="ai-chat-input-shell"><span className="ai-chat-placeholder">{c.chatPlaceholder}</span><button className="ai-chat-send" type="button" aria-label={c.chatSendLabel || "Send"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></button></div></div>
+        </div>
       )}
     </div>
   );
 };
 
-const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, setLoginForm, onClose, onSubmit }) => {
+const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {
   if (!loginOpen) return null;
 
   const roles = [
@@ -2587,7 +2225,7 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
       <div className="login-shell">
         <button className="login-close" type="button" onClick={onClose} aria-label={c.loginClose}>x</button>
         <div className="login-copy">
-          <div className="eyebrow login-eyebrow"><span>+</span><span>{c.loginEyebrow}</span></div>
+          <div className="eyebrow login-eyebrow"><span className="eyebrow-dot" aria-hidden="true"></span><span>{c.loginEyebrow}</span></div>
           <h2 id="login-title">{c.loginTitle}</h2>
           <p>{c.loginText}</p>
         </div>
@@ -2604,7 +2242,7 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
             </button>
           ))}
         </div>
-        <div className="login-form-card">
+        <form className="login-form-card" onSubmit={onSubmit} noValidate={selectedRole === "guest"}>
           <div className="login-form-head">
             <strong>{c.loginRoles[selectedRole].title}</strong>
             <span>{selectedRole === "guest" ? c.loginGuestNote : c.loginFormNote}</span>
@@ -2614,11 +2252,11 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
               <>
                 <label className="login-field">
                   <span>{c.loginEmailLabel}</span>
-                  <input type="email" value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
+                  <input type="email" required value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
                 </label>
                 <label className="login-field">
                   <span>{c.loginPasswordLabel}</span>
-                  <input type="password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
+                  <input type="password" required minLength="8" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
                 </label>
               </>
             ) : (
@@ -2628,19 +2266,55 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
               </label>
             )}
           </div>
+          {loginError ? <div className="login-error" role="alert">{loginError}</div> : null}
           <div className="login-actions">
             <button className="btn btn-secondary" type="button" onClick={onClose}>{c.loginCancel}</button>
-            <button className="btn btn-primary" type="button" onClick={onSubmit}>{c.loginContinue}</button>
+            <button className="btn btn-primary" type="submit" disabled={loginSubmitting}>{loginSubmitting ? c.loginSubmitting : c.loginContinue}</button>
           </div>
           <div className="login-helper">{selectedRole === "guest" ? c.loginGuestHelper : c.loginMemberHelper}</div>
-        </div>
+        </form>
       </div>
     </div>
   );
 };
 
-const TeacherDashboard = ({ c, activeProfile, onBack, onOpenQuiz }) => {
-  const cards = c.teacherDashboardCards || [];
+const TeacherDashboard = ({ c, activeProfile, authToken, onBack }) => {
+  const [query, setQuery] = useState("");
+  const [sortBy, setSortBy] = useState("progress");
+  const [dashboardState, setDashboardState] = useState({ loading: true, error: "", summary: [], students: [] });
+  const loadDashboard = async (searchText, nextSort) => {
+    if (!authToken) {
+      setDashboardState({ loading: false, error: c.teacherDashboardAccessDenied, summary: [], students: [] });
+      return;
+    }
+
+    setDashboardState((current) => ({ ...current, loading: true, error: "" }));
+    try {
+      const params = new URLSearchParams();
+      if (searchText.trim()) params.set("q", searchText.trim());
+      params.set("sort", nextSort);
+      const response = await fetch(`/api/teacher/dashboard?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setDashboardState({ loading: false, error: result.message || c.teacherDashboardLoadError, summary: [], students: [] });
+        return;
+      }
+      setDashboardState({
+        loading: false,
+        error: "",
+        summary: result.summary || [],
+        students: result.students || []
+      });
+    } catch (error) {
+      setDashboardState({ loading: false, error: c.teacherDashboardLoadError, summary: [], students: [] });
+    }
+  };
+
+  useEffect(() => {
+    loadDashboard(query, sortBy);
+  }, [authToken, c.teacherDashboardAccessDenied, c.teacherDashboardLoadError, query, sortBy]);
 
   return (
     <section className="teacher-dashboard" id="teacher-dashboard">
@@ -2659,11 +2333,24 @@ const TeacherDashboard = ({ c, activeProfile, onBack, onOpenQuiz }) => {
           </div>
           <div className="teacher-dashboard-actions">
             <button className="btn btn-secondary" type="button" onClick={onBack}>{c.backToExperiments}</button>
-            <button className="btn btn-primary" type="button" onClick={onOpenQuiz}>{c.openQuizButton}</button>
           </div>
         </div>
+        <div className="teacher-dashboard-toolbar">
+          <label className="dashboard-search">
+            <span>{c.teacherDashboardSearchLabel}</span>
+            <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={c.teacherDashboardSearchPlaceholder} />
+          </label>
+          <label className="dashboard-sort">
+            <span>{c.teacherDashboardSortLabel}</span>
+            <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}>
+              <option value="progress">{c.teacherDashboardSortProgress}</option>
+              <option value="score">{c.teacherDashboardSortScore}</option>
+              <option value="name">{c.teacherDashboardSortName}</option>
+            </select>
+          </label>
+        </div>
         <div className="teacher-dashboard-grid">
-          {cards.map((card) => (
+          {dashboardState.summary.map((card) => (
             <article className="teacher-dashboard-card" key={card.title}>
               <strong>{card.value}</strong>
               <h4>{card.title}</h4>
@@ -2671,6 +2358,35 @@ const TeacherDashboard = ({ c, activeProfile, onBack, onOpenQuiz }) => {
             </article>
           ))}
         </div>
+        {dashboardState.loading ? <div className="dashboard-state-card">{c.teacherDashboardLoading}</div> : null}
+        {!dashboardState.loading && dashboardState.error ? (
+          <div className="dashboard-state-card error">
+            <span>{dashboardState.error}</span>
+            <button className="btn btn-secondary" type="button" onClick={() => loadDashboard(query, sortBy)}>{c.teacherDashboardRetry}</button>
+          </div>
+        ) : null}
+        {!dashboardState.loading && !dashboardState.error && dashboardState.students.length === 0 ? (
+          <div className="dashboard-state-card">{c.teacherDashboardEmpty}</div>
+        ) : null}
+        {!dashboardState.loading && !dashboardState.error && dashboardState.students.length > 0 ? (
+          <div className="teacher-students-list">
+            {dashboardState.students.map((student) => (
+              <article className="teacher-student-row" key={student.id}>
+                <div className="teacher-student-main">
+                  <strong>{student.name}</strong>
+                  <span>{student.grade} - {student.section}</span>
+                </div>
+                <div className="teacher-student-meta">
+                  <span>{student.experiment}</span>
+                  <span>{c.teacherDashboardProgressLabel}: {student.progress}%</span>
+                  <span>{c.teacherDashboardScoreLabel}: {student.quizScore}/10</span>
+                  <span>{student.lastActive}</span>
+                  <span className={`teacher-student-status ${student.status === "يحتاج دعم" ? "warn" : ""}`}>{student.status}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -2727,55 +2443,13 @@ const QUIZ_BANK = {
   ]
 };
 
-const QuizPage = ({ c, quizContext, onBack, language }) => {
+const QuizPage = ({ c, quizContext, onBack }) => {
   const isArabic = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
   const materialId = quizContext?.materialId || "physics";
-
-  // The built-in bank is the baseline; AI questions replace it when generated.
-  const bankQuestions = (QUIZ_BANK[materialId] || QUIZ_BANK.physics).map((question) => ({
-    prompt: isArabic ? question.promptAr : question.promptEn,
-    options: isArabic ? question.optionsAr : question.optionsEn,
-    answer: question.answer,
-    explanation: ""
-  }));
-
-  const [aiQuestions, setAiQuestions] = useState(null);
-  const [generating, setGenerating] = useState(false);
-  const [genError, setGenError] = useState(null);
+  const questions = QUIZ_BANK[materialId] || QUIZ_BANK.physics;
   const [answers, setAnswers] = useState({});
-
-  const questions = aiQuestions || bankQuestions;
   const score = questions.reduce((total, question, index) => total + (answers[index] === question.answer ? 1 : 0), 0);
   const completed = Object.keys(answers).length === questions.length;
-
-  const generate = async () => {
-    if (generating) return;
-    setGenerating(true);
-    setGenError(null);
-    try {
-      const response = await fetch("/api/quiz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          materialId,
-          experimentIndex: quizContext?.experimentIndex,
-          experimentTitle: quizContext?.experimentTitle,
-          language
-        })
-      });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok || !Array.isArray(payload.questions) || !payload.questions.length) {
-        setGenError(payload.error === "not_configured" ? c.chatNotConfigured : payload.message || c.quizAiFailed);
-        return;
-      }
-      setAiQuestions(payload.questions);
-      setAnswers({});
-    } catch {
-      setGenError(c.quizAiFailed);
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   return (
     <section className="quiz-page" id="quiz-page">
@@ -2792,49 +2466,29 @@ const QuizPage = ({ c, quizContext, onBack, language }) => {
           <p>{c.quizText}</p>
           <div className="quiz-top-actions">
             <button className="btn btn-secondary" type="button" onClick={onBack}>{c.backToExperiments}</button>
-            <button className="btn btn-secondary quiz-ai-btn" type="button" onClick={generate} disabled={generating}>
-              {generating ? c.quizAiLoading : c.quizAiGenerate}
-            </button>
             <div className="quiz-score-pill">{c.quizScoreLabel}: {score}/{questions.length}</div>
           </div>
-          {aiQuestions ? <div className="quiz-ai-badge">{c.quizAiBadge}</div> : null}
-          {genError ? <div className="quiz-ai-error">{genError}</div> : null}
         </div>
         <div className="quiz-question-list">
           {questions.map((question, index) => {
-            const chosen = answers[index];
-            const answered = chosen !== undefined;
+            const prompt = isArabic ? question.promptAr : question.promptEn;
+            const options = isArabic ? question.optionsAr : question.optionsEn;
             return (
-              <article className="quiz-question-card" key={`${materialId}-${aiQuestions ? "ai" : "bank"}-${index}`}>
+              <article className="quiz-question-card" key={`${materialId}-${index}`}>
                 <div className="quiz-question-number">{String(index + 1).padStart(2, "0")}</div>
-                <h4>{question.prompt}</h4>
+                <h4>{prompt}</h4>
                 <div className="quiz-options">
-                  {question.options.map((option, optionIndex) => {
-                    const state = !answered
-                      ? ""
-                      : optionIndex === question.answer
-                        ? "correct"
-                        : optionIndex === chosen
-                          ? "wrong"
-                          : "";
-                    return (
-                      <button
-                        key={`${option}-${optionIndex}`}
-                        type="button"
-                        className={`quiz-option ${chosen === optionIndex ? "active" : ""} ${state}`}
-                        onClick={() => setAnswers((current) => ({ ...current, [index]: optionIndex }))}
-                      >
-                        {option}
-                      </button>
-                    );
-                  })}
+                  {options.map((option, optionIndex) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`quiz-option ${answers[index] === optionIndex ? "active" : ""}`}
+                      onClick={() => setAnswers((current) => ({ ...current, [index]: optionIndex }))}
+                    >
+                      {option}
+                    </button>
+                  ))}
                 </div>
-                {answered && question.explanation ? (
-                  <div className="quiz-explanation">
-                    <strong>{chosen === question.answer ? c.quizAnswerCorrect : c.quizAnswerWrong}</strong>
-                    <span>{question.explanation}</span>
-                  </div>
-                ) : null}
               </article>
             );
           })}

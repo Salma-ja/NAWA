@@ -7,12 +7,14 @@ function App() {
   const [theme, setTheme] = useState("dark");
   const [chatOpen, setChatOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState("student");
   const [activeProfile, setActiveProfile] = useState(null);
+  const [authToken, setAuthToken] = useState("");
   const [currentView, setCurrentView] = useState("home");
   const [quizContext, setQuizContext] = useState(null);
   const [activeMaterial, setActiveMaterial] = useState("physics");
-  const [activeExperiment, setActiveExperiment] = useState(null);
   const [loginForm, setLoginForm] = useState({ email: "", password: "", purpose: "" });
   const [chemSettings, setChemSettings] = useState({
     anode: "Zn",
@@ -238,66 +240,56 @@ function App() {
     return () => window.clearInterval(timer);
   }, [dragging, coilTurns]);
 
-  // What the AI tutor is told about the student's current screen. Only the
-  // readings that belong to the open subject are included, so the agent is not
-  // handed numbers from a lab the student is not looking at.
-  const labContext = useMemo(() => {
-    const material = (c.materials || []).find((item) => item.id === activeMaterial);
-    if (!material || !activeExperiment) return null;
-
-    let state = null;
-    if (activeMaterial === "physics" && activeExperiment.index === 0) {
-      state = { coilTurns, magnetPosition: magnetX.toFixed(2), inducedSignal };
-    } else if (activeMaterial === "chemistry" && activeExperiment.index === 0) {
-      state = {
-        anode: chemSettings.anode,
-        cathode: chemSettings.cathode,
-        leftElectrolyte: chemSettings.electrolyteLeft,
-        rightElectrolyte: chemSettings.electrolyteRight,
-        saltBridge: chemSettings.saltBridge,
-        wireConnected: chemSettings.connected,
-        voltage: chemMetrics.voltage,
-        current: chemMetrics.current,
-        cellReady: chemMetrics.cellReady
-      };
-    } else if (activeMaterial === "biology" && activeExperiment.index === 0) {
-      state = {
-        lightOn: bioSettings.lightOn,
-        water: bioSettings.water,
-        co2: bioSettings.co2,
-        temperature: bioSettings.temperature,
-        photosynthesisRate: bioMetrics.photosynthesisRate,
-        respirationRate: bioMetrics.respirationRate,
-        oxygenProduced: bioMetrics.oxygenProduced,
-        plantState: bioMetrics.plantState
-      };
-    }
-
-    return {
-      materialId: material.id,
-      materialLabel: material.label,
-      experimentTitle: activeExperiment.title,
-      experimentIndex: activeExperiment.index,
-      state
-    };
-  }, [c, activeMaterial, activeExperiment, coilTurns, magnetX, inducedSignal, chemSettings, chemMetrics, bioSettings, bioMetrics]);
-
   const handleOpenLogin = () => setLoginOpen(true);
 
   const handleCloseLogin = () => {
     setLoginOpen(false);
+    setLoginError("");
   };
 
-  const handleSubmitLogin = () => {
-    const fallbackName = selectedRole === "guest"
-      ? c.loginRoles[selectedRole].title
-      : (loginForm.email.trim().split("@")[0] || c.loginRoles[selectedRole].title);
-    setActiveProfile({
-      role: selectedRole,
-      name: fallbackName
-    });
-    setCurrentView("home");
-    setLoginOpen(false);
+  const handleSubmitLogin = async (event) => {
+    event.preventDefault();
+    setLoginError("");
+
+    if (selectedRole === "guest") {
+      const fallbackName = loginForm.purpose.trim() || c.loginRoles.guest.title;
+      setActiveProfile({
+        role: "guest",
+        name: fallbackName
+      });
+      setAuthToken("");
+      setCurrentView("home");
+      setLoginOpen(false);
+      return;
+    }
+
+    setLoginSubmitting(true);
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: selectedRole,
+          email: loginForm.email.trim(),
+          password: loginForm.password
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setLoginError(result.message || c.loginErrorGeneric);
+        return;
+      }
+
+      setActiveProfile(result.profile);
+      setAuthToken(result.token);
+      setCurrentView("home");
+      setLoginOpen(false);
+      setLoginForm({ email: "", password: "", purpose: "" });
+    } catch (error) {
+      setLoginError(c.loginErrorNetwork);
+    } finally {
+      setLoginSubmitting(false);
+    }
   };
 
   const handleOpenDashboard = () => {
@@ -347,20 +339,20 @@ function App() {
         <div className="container">
           <Header c={c} isArabic={isArabic} language={language} theme={theme} onToggleLanguage={() => setLanguage(language === "ar" ? "en" : "ar")} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenLogin={handleOpenLogin} activeProfile={activeProfileLabel} onOpenDashboard={handleOpenDashboard} isTeacher={isTeacher} />
           {currentView === "dashboard" ? (
-            <TeacherDashboard c={c} activeProfile={activeProfile} onBack={handleOpenHome} onOpenQuiz={() => handleOpenQuiz(null)} />
+            <TeacherDashboard c={c} activeProfile={activeProfile} authToken={authToken} onBack={handleOpenHome} />
           ) : currentView === "quiz" ? (
-            <QuizPage c={c} quizContext={quizContext} onBack={handleOpenHome} language={language} />
+            <QuizPage c={c} quizContext={quizContext} onBack={handleOpenHome} />
           ) : (
             <>
               <HeroSection c={c} rotation={rotation} onOpenLogin={handleOpenLogin} />
-              <ExperimentSection c={c} activeMaterial={activeMaterial} setActiveMaterial={setActiveMaterial} stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} inducedSignal={inducedSignal} coilTurns={coilTurns} magnetX={magnetX} setCoilTurns={setCoilTurns} updateMagnetPosition={updateMagnetPosition} bioSettings={bioSettings} setBioSettings={setBioSettings} bioMetrics={bioMetrics} bioTrend={bioTrend} resetBiologyExperiment={resetBiologyExperiment} chemSettings={chemSettings} setChemSettings={setChemSettings} chemMetrics={chemMetrics} chemTrend={chemTrend} resetChemistryExperiment={resetChemistryExperiment} onOpenQuiz={handleOpenQuiz} onSelectExperiment={setActiveExperiment} />
+              <ExperimentSection c={c} activeProfile={activeProfile} activeMaterial={activeMaterial} setActiveMaterial={setActiveMaterial} stageRef={stageRef} dragging={dragging} setDragging={setDragging} handleStagePointer={handleStagePointer} coilLoopOffsets={coilLoopOffsets} bulbPower={bulbPower} magnetSvgX={magnetSvgX} inducedSignal={inducedSignal} coilTurns={coilTurns} magnetX={magnetX} setCoilTurns={setCoilTurns} updateMagnetPosition={updateMagnetPosition} bioSettings={bioSettings} setBioSettings={setBioSettings} bioMetrics={bioMetrics} bioTrend={bioTrend} resetBiologyExperiment={resetBiologyExperiment} chemSettings={chemSettings} setChemSettings={setChemSettings} chemMetrics={chemMetrics} chemTrend={chemTrend} resetChemistryExperiment={resetChemistryExperiment} onOpenQuiz={handleOpenQuiz} />
               <FeaturesSection c={c} />
               <FAQSection c={c} />
               <FooterSection c={c} />
             </>
           )}
-          <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} labContext={labContext} language={language} />
-          <LoginPortal c={c} loginOpen={loginOpen} selectedRole={selectedRole} setSelectedRole={setSelectedRole} loginForm={loginForm} setLoginForm={setLoginForm} onClose={handleCloseLogin} onSubmit={handleSubmitLogin} />
+          <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} />
+          <LoginPortal c={c} loginOpen={loginOpen} selectedRole={selectedRole} setSelectedRole={setSelectedRole} loginForm={loginForm} setLoginForm={setLoginForm} loginError={loginError} loginSubmitting={loginSubmitting} onClose={handleCloseLogin} onSubmit={handleSubmitLogin} />
         </div>
       </div>
     </div>

@@ -1,55 +1,11 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-
-/**
- * Loads KEY=value pairs from web/.env before anything reads process.env.
- * Keeps the project dependency-free -- no dotenv package needed.
- */
-function loadEnvFile() {
-  const envPath = path.join(__dirname, ".env");
-  let raw;
-  try {
-    raw = fs.readFileSync(envPath, "utf8");
-  } catch {
-    return;
-  }
-
-  const overridden = [];
-  for (const line of raw.split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const separator = trimmed.indexOf("=");
-    if (separator === -1) continue;
-    const key = trimmed.slice(0, separator).trim();
-    if (!key) continue;
-    const value = trimmed.slice(separator + 1).trim().replace(/^["']|["']$/g, "");
-
-    // web/.env wins over the ambient environment. A stale OPENAI_API_KEY left
-    // in the user's system variables would otherwise silently override the file
-    // and be sent to whichever provider .env points at -- which fails as a 401
-    // that looks like a bad key rather than a config clash.
-    if (key in process.env && process.env[key] !== value) overridden.push(key);
-    process.env[key] = value;
-  }
-
-  if (overridden.length) {
-    console.log(`Note: web/.env overrode system variable(s): ${overridden.join(", ")}`);
-  }
-}
-
-loadEnvFile();
-
-const { askTutor, streamTutor, generateQuiz, DEFAULT_MODEL } = require("./agent/agent");
+const { URL } = require("url");
 
 const host = "127.0.0.1";
-const port = Number(process.env.PORT) || 4174;
+const port = 4174;
 const root = __dirname;
-
-const MAX_BODY_BYTES = 32 * 1024;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX = 30;
-const rateBuckets = new Map();
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -64,224 +20,186 @@ const mimeTypes = {
   ".ico": "image/x-icon"
 };
 
-function getApiKey() {
-  const key = (process.env.OPENAI_API_KEY || "").trim();
-  return key || null;
-}
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const sessions = new Map();
+
+const users = [
+  { id: "t-001", role: "teacher", email: "teacher@nawa.lab", password: "Teacher@123", name: "أحمد الخطيب" },
+  { id: "t-002", role: "teacher", email: "science.lead@nawa.lab", password: "Teacher@123", name: "سارة العبدالله" },
+  { id: "s-001", role: "student", email: "student@nawa.lab", password: "Student@123", name: "ليث العجارمة" },
+  { id: "s-002", role: "student", email: "learner@nawa.lab", password: "Student@123", name: "تالا نصار" }
+];
+
+const teacherDashboardData = {
+  "t-001": {
+    teacherName: "أحمد الخطيب",
+    summary: [
+      { value: "26", title: "طلاب نشطون", text: "عدد الطلاب الذين فتحوا تجربة أو أكملوا نشاطًا خلال آخر 24 ساعة." },
+      { value: "7", title: "تجارب قيد المتابعة", text: "تجارب مفتوحة حاليًا وتحتاج متابعة أو نقاشًا داخل الصف." },
+      { value: "88%", title: "متوسط الإنجاز", text: "متوسط إكمال التجارب والاختبارات القصيرة في الشعب الحالية." }
+    ],
+    students: [
+      { id: "ST-201", name: "ليث العجارمة", grade: "الصف التاسع", section: "9-أ", experiment: "الحث الكهرومغناطيسي", progress: 92, quizScore: 9, lastActive: "منذ 12 دقيقة", status: "مكتمل" },
+      { id: "ST-202", name: "سجى الخوالدة", grade: "الصف التاسع", section: "9-أ", experiment: "الخلية الجلفانية", progress: 74, quizScore: 7, lastActive: "منذ 25 دقيقة", status: "يتابع" },
+      { id: "ST-203", name: "محمد الشوابكة", grade: "الصف العاشر", section: "10-ب", experiment: "تضاعف DNA", progress: 58, quizScore: 6, lastActive: "منذ 40 دقيقة", status: "يحتاج دعم" },
+      { id: "ST-204", name: "تالا نصار", grade: "الصف العاشر", section: "10-ب", experiment: "التصادم الخطي", progress: 84, quizScore: 8, lastActive: "منذ ساعة", status: "مكتمل" },
+      { id: "ST-205", name: "آدم الزعبي", grade: "الصف الثامن", section: "8-ج", experiment: "الحث الكهرومغناطيسي", progress: 37, quizScore: 4, lastActive: "منذ ساعتين", status: "يحتاج دعم" }
+    ]
+  },
+  "t-002": {
+    teacherName: "سارة العبدالله",
+    summary: [
+      { value: "0", title: "طلاب نشطون", text: "لا يوجد نشاط طلابي مسجل لهذه الشعبة حتى الآن." },
+      { value: "0", title: "تجارب قيد المتابعة", text: "لم يتم فتح أي تجربة بعد من هذه المجموعة." },
+      { value: "--", title: "متوسط الإنجاز", text: "سيظهر المتوسط تلقائيًا بعد بدء أول نشاط طلابي." }
+    ],
+    students: []
+  }
+};
 
 function sendJson(res, statusCode, payload) {
-  const body = JSON.stringify(payload);
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
-    "Content-Length": Buffer.byteLength(body),
     "Cache-Control": "no-store"
   });
-  res.end(body);
+  res.end(JSON.stringify(payload));
 }
 
 function readJsonBody(req) {
   return new Promise((resolve, reject) => {
-    let size = 0;
-    const chunks = [];
+    let data = "";
     req.on("data", (chunk) => {
-      size += chunk.length;
-      if (size > MAX_BODY_BYTES) {
-        reject(Object.assign(new Error("Request body too large"), { statusCode: 413 }));
+      data += chunk;
+      if (data.length > 1e6) {
+        reject(new Error("Payload too large"));
         req.destroy();
-        return;
       }
-      chunks.push(chunk);
     });
     req.on("end", () => {
-      if (!chunks.length) return resolve({});
       try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
-      } catch {
-        reject(Object.assign(new Error("Invalid JSON body"), { statusCode: 400 }));
+        resolve(data ? JSON.parse(data) : {});
+      } catch (error) {
+        reject(error);
       }
     });
     req.on("error", reject);
   });
 }
 
-/** Cheap per-client throttle so a stuck loop cannot drain the API credit. */
-function rateLimited(req) {
-  const client = req.socket.remoteAddress || "unknown";
-  const now = Date.now();
-  const bucket = rateBuckets.get(client);
-
-  if (!bucket || now > bucket.resetAt) {
-    rateBuckets.set(client, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-  bucket.count += 1;
-  return bucket.count > RATE_LIMIT_MAX;
+function getSessionFromRequest(req) {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  if (!token || !sessions.has(token)) return null;
+  return sessions.get(token);
 }
 
-function reportAgentError(res, error) {
-  console.error("[nawa-agent]", error.message, error.detail || "");
-  const status = error.status;
+function handleLogin(req, res) {
+  readJsonBody(req)
+    .then((body) => {
+      const email = String(body.email || "").trim().toLowerCase();
+      const password = String(body.password || "");
+      const role = String(body.role || "").trim();
 
-  if (status === 401) {
-    return sendJson(res, 502, { error: "auth", message: "The OpenAI API key was rejected. Check OPENAI_API_KEY in web/.env." });
-  }
-  if (status === 429) {
-    return sendJson(res, 502, { error: "rate_limit", message: "OpenAI is rate limiting or the account is out of credit." });
-  }
-  if (status === 404) {
-    return sendJson(res, 502, { error: "model", message: `The model "${process.env.OPENAI_MODEL || DEFAULT_MODEL}" is not available to this account. Set OPENAI_MODEL in web/.env to one you can access.` });
-  }
-  return sendJson(res, 502, { error: "upstream", message: "The tutor service could not be reached. Check the server console for details." });
-}
-
-async function handleApi(req, res, pathname) {
-  if (pathname === "/api/status" && req.method === "GET") {
-    return sendJson(res, 200, {
-      configured: Boolean(getApiKey()),
-      model: process.env.OPENAI_MODEL || DEFAULT_MODEL
-    });
-  }
-
-  if (req.method !== "POST") {
-    return sendJson(res, 405, { error: "method", message: "Use POST." });
-  }
-
-  if (rateLimited(req)) {
-    return sendJson(res, 429, { error: "throttled", message: "Too many requests. Wait a moment and try again." });
-  }
-
-  const apiKey = getApiKey();
-  if (!apiKey) {
-    return sendJson(res, 503, {
-      error: "not_configured",
-      message: "The tutor is not connected yet. Add OPENAI_API_KEY to web/.env and restart the server."
-    });
-  }
-
-  let body;
-  try {
-    body = await readJsonBody(req);
-  } catch (error) {
-    return sendJson(res, error.statusCode || 400, { error: "bad_request", message: error.message });
-  }
-
-  const model = process.env.OPENAI_MODEL || DEFAULT_MODEL;
-
-  if (pathname === "/api/chat") {
-    const message = typeof body.message === "string" ? body.message.trim() : "";
-    if (!message) {
-      return sendJson(res, 400, { error: "bad_request", message: "A message is required." });
-    }
-
-    if (body.stream) {
-      const tokens = streamTutor({
-        message,
-        history: body.history,
-        labContext: body.labContext,
-        language: body.language === "ar" ? "ar" : "en",
-        apiKey,
-        model
-      });
-
-      // Pull the first token before committing to a 200. An auth or model
-      // failure surfaces here, while a normal JSON error can still be sent.
-      let first;
-      try {
-        first = await tokens.next();
-      } catch (error) {
-        return reportAgentError(res, error);
+      if (!email || !password) {
+        sendJson(res, 400, { message: "يرجى إدخال البريد الإلكتروني وكلمة المرور." });
+        return;
       }
 
-      res.writeHead(200, {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-store",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no"
-      });
-
-      try {
-        if (!first.done && first.value) {
-          res.write(`data: ${JSON.stringify({ t: first.value })}\n\n`);
-        }
-        for await (const token of tokens) {
-          res.write(`data: ${JSON.stringify({ t: token })}\n\n`);
-        }
-        res.write("data: [DONE]\n\n");
-      } catch (error) {
-        // Headers are already sent, so the failure travels as a stream event.
-        console.error("[nawa-agent] stream broke:", error.message);
-        res.write(`data: ${JSON.stringify({ error: "stream" })}\n\n`);
+      if (!emailPattern.test(email)) {
+        sendJson(res, 400, { message: "صيغة البريد الإلكتروني غير صحيحة." });
+        return;
       }
-      res.end();
-      return undefined;
-    }
 
-    try {
-      const reply = await askTutor({
-        message,
-        history: body.history,
-        labContext: body.labContext,
-        language: body.language === "ar" ? "ar" : "en",
-        apiKey,
-        model
+      const user = users.find((item) => item.email.toLowerCase() === email && item.role === role);
+      if (!user || user.password !== password) {
+        sendJson(res, 401, { message: "بيانات الدخول غير صحيحة. تأكد من البريد الإلكتروني وكلمة المرور." });
+        return;
+      }
+
+      const token = `nawa-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      sessions.set(token, {
+        userId: user.id,
+        role: user.role,
+        email: user.email,
+        name: user.name
       });
-      return sendJson(res, 200, { reply });
-    } catch (error) {
-      return reportAgentError(res, error);
-    }
-  }
 
-  if (pathname === "/api/quiz") {
-    try {
-      const questions = await generateQuiz({
-        materialId: body.materialId,
-        experimentIndex: body.experimentIndex,
-        experimentTitle: body.experimentTitle,
-        language: body.language === "ar" ? "ar" : "en",
-        count: Math.min(Math.max(Number(body.count) || 3, 1), 6),
-        apiKey,
-        model
+      sendJson(res, 200, {
+        token,
+        profile: {
+          id: user.id,
+          role: user.role,
+          email: user.email,
+          name: user.name
+        }
       });
-      return sendJson(res, 200, { questions });
-    } catch (error) {
-      return reportAgentError(res, error);
-    }
-  }
-
-  return sendJson(res, 404, { error: "not_found", message: "Unknown endpoint." });
-}
-
-/**
- * Server-only paths. These must never be reachable over HTTP:
- * .env holds the API key, and agent/ is the server-side tutor code.
- */
-function isProtected(requestPath) {
-  const segments = requestPath.split(/[/\\]/).filter(Boolean);
-  return segments.some(
-    (segment) => segment.startsWith(".") || segment.toLowerCase() === "agent"
-  );
-}
-
-function serveStatic(req, res, pathname) {
-  let decoded;
-  try {
-    decoded = decodeURIComponent(pathname);
-  } catch {
-    decoded = pathname;
-  }
-  const requestPath = decoded === "/" ? "/index.html" : decoded;
-  const filePath = path.join(root, path.normalize(requestPath));
-
-  // Keep every served file inside web/, whatever the request path claims,
-  // and never expose secrets or server-side code.
-  if (!filePath.startsWith(root + path.sep) || isProtected(requestPath)) {
-    res.writeHead(403, {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Cache-Control": "no-store"
+    })
+    .catch(() => {
+      sendJson(res, 400, { message: "تعذر قراءة بيانات الدخول. حاول مرة أخرى." });
     });
-    res.end("Forbidden");
+}
+
+function handleTeacherDashboard(req, res, url) {
+  const session = getSessionFromRequest(req);
+  if (!session) {
+    sendJson(res, 401, { message: "انتهت الجلسة أو لم يتم تسجيل الدخول." });
     return;
   }
+
+  if (session.role !== "teacher") {
+    sendJson(res, 403, { message: "هذه الصفحة متاحة للمعلم فقط." });
+    return;
+  }
+
+  const q = (url.searchParams.get("q") || "").trim().toLowerCase();
+  const sort = (url.searchParams.get("sort") || "progress").trim();
+  const dataset = teacherDashboardData[session.userId] || {
+    teacherName: session.name,
+    summary: [],
+    students: []
+  };
+
+  let students = [...dataset.students];
+  if (q) {
+    students = students.filter((student) =>
+      [student.name, student.grade, student.section, student.experiment, student.status]
+        .some((value) => String(value).toLowerCase().includes(q))
+    );
+  }
+
+  const sorters = {
+    progress: (a, b) => b.progress - a.progress,
+    score: (a, b) => b.quizScore - a.quizScore,
+    name: (a, b) => a.name.localeCompare(b.name, "ar"),
+    recent: (a, b) => a.id.localeCompare(b.id, "en")
+  };
+  students.sort(sorters[sort] || sorters.progress);
+
+  setTimeout(() => {
+    sendJson(res, 200, {
+      teacherName: dataset.teacherName,
+      summary: dataset.summary,
+      students
+    });
+  }, 260);
+}
+
+http.createServer((req, res) => {
+  const url = new URL(req.url, `http://${host}:${port}`);
+
+  if (req.method === "POST" && url.pathname === "/api/auth/login") {
+    handleLogin(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/teacher/dashboard") {
+    handleTeacherDashboard(req, res, url);
+    return;
+  }
+
+  const requestPath = url.pathname === "/" ? "/index.html" : url.pathname;
+  const safePath = path.normalize(requestPath).replace(/^(\.\.[/\\])+/, "");
+  const filePath = path.join(root, safePath);
 
   fs.readFile(filePath, (error, content) => {
     if (error) {
@@ -299,26 +217,6 @@ function serveStatic(req, res, pathname) {
     });
     res.end(content);
   });
-}
-
-http.createServer((req, res) => {
-  const pathname = (req.url || "/").split("?")[0];
-
-  if (pathname.startsWith("/api/")) {
-    handleApi(req, res, pathname).catch((error) => {
-      console.error("[nawa-server]", error);
-      sendJson(res, 500, { error: "server", message: "Unexpected server error." });
-    });
-    return;
-  }
-
-  serveStatic(req, res, pathname);
 }).listen(port, host, () => {
-  const configured = Boolean(getApiKey());
   console.log(`NAWA web server running at http://${host}:${port}`);
-  console.log(
-    configured
-      ? `AI tutor: connected (model: ${process.env.OPENAI_MODEL || DEFAULT_MODEL})`
-      : "AI tutor: NOT configured - add OPENAI_API_KEY to web/.env, then restart"
-  );
 });
