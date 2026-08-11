@@ -64,7 +64,7 @@ Object.assign(window.NAWA_CONTENT.en, {
 });
 
 Object.assign(window.NAWA_CONTENT.ar, {
-  launchDemo: "ابدأ التعلّم",
+  launchDemo: "تسجيل دخول",
   eyebrow: "تعلّم العلوم بالتجربة، مش بالحفظ",
   heroTitleLine1: "من نواة الفكرة",
   heroTitleLine2Before: "",
@@ -85,7 +85,7 @@ Object.assign(window.NAWA_CONTENT.ar, {
   featuresTitle: "لماذا يتعلّم الطلاب بشكل أفضل مع نواة",
   featuresText: "",
   experienceTitle: "رحلة واحدة، من الفضول إلى الإتقان",
-  experienceText: "تقدّم الصفحة الرئيسية مسارًا واضحًا ومتكاملًا يساعد الطلاب والمعلمين على فهم القيمة بسرعة.",
+  experienceText: "تعرض الصفحة الرئيسية تجربة متكاملة تساعد على فهم الفكرة من أول خطوة.",
   faqTitle: "الأسئلة الشائعة",
   faqText: "إجابات سريعة على أكثر الأسئلة التي قد يطرحها الطلاب والمعلمون قبل البدء.",
   outputUnit: "شدة الإشارة",
@@ -202,7 +202,7 @@ Object.assign(window.NAWA_CONTENT.en, {
 });
 
 Object.assign(window.NAWA_CONTENT.ar, {
-  launchDemo: "ابدأ التعلّم",
+  launchDemo: "تسجيل دخول",
   eyebrow: "تعلّم العلوم بالتجربة، مش بالحفظ",
   heroTitleLine1: "من نواة الفكرة",
   heroTitleLine2Before: "",
@@ -223,7 +223,7 @@ Object.assign(window.NAWA_CONTENT.ar, {
   featuresTitle: "لماذا يتعلّم الطلاب بشكل أفضل مع نواة",
   featuresText: "",
   experienceTitle: "رحلة واحدة، من الفضول إلى الإتقان",
-  experienceText: "تقدّم الصفحة الرئيسية مسارًا واضحًا ومتكاملًا يساعد الطلاب والمعلمين على فهم القيمة بسرعة.",
+  experienceText: "تعرض الصفحة الرئيسية تجربة متكاملة تساعد على فهم الفكرة من أول خطوة.",
   faqTitle: "الأسئلة الشائعة",
   faqText: "إجابات سريعة على أكثر الأسئلة التي قد يطرحها الطلاب والمعلمون قبل البدء.",
   outputUnit: "شدة الإشارة",
@@ -289,7 +289,7 @@ Object.assign(window.NAWA_CONTENT.en, {
   ]
 });
 Object.assign(window.NAWA_CONTENT.ar, {
-  launchDemo: "ابدأ التعلّم",
+  launchDemo: "تسجيل دخول",
   eyebrow: "تعلّم العلوم بالتجربة، مش بالحفظ",
   heroTitleLine1: "من نواة الفكرة",
   heroTitleLine2Before: "",
@@ -309,7 +309,7 @@ Object.assign(window.NAWA_CONTENT.ar, {
   ],
   featuresTitle: "لماذا يتعلّم الطلاب بشكل أفضل مع نواة",
   experienceTitle: "رحلة واحدة، من الفضول إلى الإتقان",
-  experienceText: "تقدّم الصفحة الرئيسية مسارًا واضحًا ومتكاملًا يساعد الطلاب والمعلمين على فهم القيمة بسرعة.",
+  experienceText: "تعرض الصفحة الرئيسية تجربة متكاملة تساعد على فهم الفكرة من أول خطوة.",
   faqTitle: "الأسئلة الشائعة",
   faqText: "إجابات سريعة على أكثر الأسئلة التي قد يطرحها الطلاب والمعلمون قبل البدء.",
   outputUnit: "شدة الإشارة",
@@ -433,7 +433,7 @@ window.NAWA_CONTENT.en.materials = (window.NAWA_CONTENT.en.materials || []).map(
 
 Object.assign(window.NAWA_CONTENT.ar, {
   experienceTitle: "رحلة واحدة، من الفضول إلى الإتقان",
-  experienceText: "تقدّم الصفحة الرئيسية مسارًا واضحًا ومتكاملًا يساعد الطلاب والمعلمين على فهم القيمة بسرعة.",
+  experienceText: "تعرض الصفحة الرئيسية تجربة متكاملة تساعد على فهم الفكرة من أول خطوة.",
   faqText: "إجابات سريعة على أكثر الأسئلة التي قد يطرحها الطلاب والمعلمون قبل البدء.",
   outputUnit: "شدة الإشارة",
   steps: [

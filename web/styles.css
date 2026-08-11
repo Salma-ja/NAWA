@@ -899,6 +899,41 @@
       font: inherit;
     }
 
+    .password-field {
+      position: relative;
+    }
+
+    .password-field input {
+      padding-inline-end: 52px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      top: 50%;
+      inset-inline-end: 12px;
+      transform: translateY(-50%);
+      width: 30px;
+      height: 30px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: color 0.2s ease, background 0.2s ease;
+    }
+
+    .password-toggle:hover {
+      color: var(--text);
+      background: rgba(255,255,255,0.06);
+    }
+
+    .password-toggle svg {
+      width: 18px;
+      height: 18px;
+    }
+
     .login-field input::placeholder {
       color: var(--muted);
     }

@@ -197,10 +197,6 @@ const HeroSection = ({ c, rotation }) => {
   return (
     <main id="home" className="hero hero-nucleus">
       <div className="hero-copy">
-        <div className="eyebrow">
-          <span className="eyebrow-dot" aria-hidden="true"></span>
-          <span>{c.eyebrow}</span>
-        </div>
         <h1>
           {hasCustomHeroLines ? (
             <>
@@ -307,6 +303,68 @@ const ExperimentScene = ({ stageRef, dragging, setDragging, handleStagePointer, 
   </div>
 );
 
+const clampValue = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const calculateCollisionOutcome = ({ massA, massB, velocityA, velocityB, collisionType }) => {
+  const totalMomentumBefore = massA * velocityA + massB * velocityB;
+  const totalEnergyBefore = 0.5 * massA * velocityA * velocityA + 0.5 * massB * velocityB * velocityB;
+  const canCollide = velocityA > velocityB;
+  const restitution = collisionType === "elastic" ? 1 : 0;
+  const sharedVelocity = totalMomentumBefore / (massA + massB);
+
+  let finalVelocityA = velocityA;
+  let finalVelocityB = velocityB;
+
+  if (canCollide) {
+    finalVelocityA = ((massA * velocityA) + (massB * velocityB) - massB * restitution * (velocityA - velocityB)) / (massA + massB);
+    finalVelocityB = ((massA * velocityA) + (massB * velocityB) + massA * restitution * (velocityA - velocityB)) / (massA + massB);
+  }
+
+  const totalMomentumAfter = massA * finalVelocityA + massB * finalVelocityB;
+  const totalEnergyAfter = 0.5 * massA * finalVelocityA * finalVelocityA + 0.5 * massB * finalVelocityB * finalVelocityB;
+
+  return {
+    canCollide,
+    sharedVelocity,
+    finalVelocityA,
+    finalVelocityB,
+    totalMomentumBefore,
+    totalMomentumAfter,
+    totalEnergyBefore,
+    totalEnergyAfter,
+    momentumGap: Math.abs(totalMomentumBefore - totalMomentumAfter),
+    energyLoss: Math.max(0, totalEnergyBefore - totalEnergyAfter)
+  };
+};
+
+class ExperimentErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    console.error(error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="material-placeholder">
+          <strong>{this.props.title}</strong>
+          <p>{this.props.message}</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const PhysicsCollisionSimulation = ({ c }) => {
   const massOptions = [0.5, 1, 1.5, 2, 2.5, 3];
   const velocityOptions = [-4, -2, 0, 2, 4];
@@ -323,6 +381,10 @@ const PhysicsCollisionSimulation = ({ c }) => {
     progress: 0
   });
   const [selectedQuestion, setSelectedQuestion] = useState(0);
+  const collisionOutcome = calculateCollisionOutcome(config);
+  const impact = config.progress / 100;
+  const approach = Math.min(1, impact / 0.5);
+  const settle = Math.max(0, (impact - 0.5) / 0.5);
 
   useEffect(() => {
     if (!config.running) return undefined;
@@ -348,29 +410,51 @@ const PhysicsCollisionSimulation = ({ c }) => {
     progress: 0
   });
 
-  const totalMomentumBefore = config.massA * config.velocityA + config.massB * config.velocityB;
-  const totalEnergyBefore = 0.5 * config.massA * config.velocityA * config.velocityA + 0.5 * config.massB * config.velocityB * config.velocityB;
-  const finalElasticA = ((config.massA - config.massB) / (config.massA + config.massB)) * config.velocityA + ((2 * config.massB) / (config.massA + config.massB)) * config.velocityB;
-  const finalElasticB = ((2 * config.massA) / (config.massA + config.massB)) * config.velocityA + ((config.massB - config.massA) / (config.massA + config.massB)) * config.velocityB;
-  const finalShared = totalMomentumBefore / (config.massA + config.massB);
-  const finalVelocityA = config.collisionType === "elastic" ? finalElasticA : finalShared;
-  const finalVelocityB = config.collisionType === "elastic" ? finalElasticB : finalShared;
-  const totalMomentumAfter = config.massA * finalVelocityA + config.massB * finalVelocityB;
-  const totalEnergyAfter = 0.5 * config.massA * finalVelocityA * finalVelocityA + 0.5 * config.massB * finalVelocityB * finalVelocityB;
-  const momentumGap = Math.abs(totalMomentumBefore - totalMomentumAfter);
-  const energyLoss = Math.max(0, totalEnergyBefore - totalEnergyAfter);
-  const impact = config.progress / 100;
-  const approach = Math.min(1, impact / 0.48);
-  const settle = Math.max(0, (impact - 0.48) / 0.52);
-  const cartAX = impact < 0.5 ? 12 + approach * 28 : 40 - settle * (config.collisionType === "elastic" ? 12 : 6);
-  const cartBX = impact < 0.5 ? 76 - approach * 28 : (config.collisionType === "elastic" ? 60 + settle * 16 : 53 + settle * 8);
-  const statusText = config.collisionType === "elastic" ? (isArabic ? "مرن" : "Elastic") : (isArabic ? "غير مرن" : "Inelastic");
-  const stageTitle = config.collisionType === "elastic"
+  const totalMomentumBefore = collisionOutcome.totalMomentumBefore;
+  const totalEnergyBefore = collisionOutcome.totalEnergyBefore;
+  const finalVelocityA = collisionOutcome.finalVelocityA;
+  const finalVelocityB = collisionOutcome.finalVelocityB;
+  const totalMomentumAfter = collisionOutcome.totalMomentumAfter;
+  const totalEnergyAfter = collisionOutcome.totalEnergyAfter;
+  const momentumGap = collisionOutcome.momentumGap;
+  const energyLoss = collisionOutcome.energyLoss;
+  const maxSpeed = Math.max(1, Math.abs(config.velocityA), Math.abs(config.velocityB), Math.abs(finalVelocityA), Math.abs(finalVelocityB));
+  const travelScale = 9 / maxSpeed;
+  const leftStart = 16;
+  const rightStart = 84;
+  const leftContact = 44;
+  const rightContact = 56;
+  const cartHalfGap = 5;
+
+  const cartAX = !collisionOutcome.canCollide
+    ? clampValue(leftStart + (config.velocityA * travelScale * impact), leftStart, rightContact - cartHalfGap)
+    : impact < 0.5
+      ? clampValue(leftStart + ((leftContact - leftStart) * approach), leftStart, leftContact - cartHalfGap)
+      : config.collisionType === "elastic"
+        ? clampValue(leftContact + (finalVelocityA * travelScale * settle), leftStart, rightContact - cartHalfGap)
+        : clampValue(leftContact + (collisionOutcome.sharedVelocity * travelScale * settle), leftStart, rightContact - 8);
+  const cartBX = !collisionOutcome.canCollide
+    ? clampValue(rightStart + (config.velocityB * travelScale * impact), leftContact + cartHalfGap, rightStart)
+    : impact < 0.5
+      ? clampValue(rightStart - ((rightStart - rightContact) * approach), rightContact + cartHalfGap, rightStart)
+      : config.collisionType === "elastic"
+        ? clampValue(rightContact + (finalVelocityB * travelScale * settle), leftContact + cartHalfGap, rightStart)
+        : clampValue(rightContact + (collisionOutcome.sharedVelocity * travelScale * settle), leftContact + 8, rightStart);
+  const statusText = !collisionOutcome.canCollide
+    ? (isArabic ? "لا يحدث تصادم" : "No collision")
+    : config.collisionType === "elastic"
+      ? (isArabic ? "مرن" : "Elastic")
+      : (isArabic ? "غير مرن" : "Inelastic");
+  const stageTitle = !collisionOutcome.canCollide
+    ? (isArabic ? "لا يحدث تصادم" : "No collision")
+    : config.collisionType === "elastic"
     ? (isArabic ? "تصادم مرن" : "Elastic collision")
     : (isArabic ? "تصادم غير مرن" : "Inelastic collision");
-  const stageHint = config.collisionType === "elastic"
-    ? c.physicsCollisionHint
-    : c.physicsCollisionCoach;
+  const stageHint = !collisionOutcome.canCollide
+    ? (c.physicsCollisionNoImpact || (isArabic ? "هذه السرعات لا تؤدي إلى تصادم، لذلك تبقى الحركة كما هي." : "These velocities do not produce a collision, so the carts keep their motion."))
+    : config.collisionType === "elastic"
+      ? c.physicsCollisionHint
+      : c.physicsCollisionCoach;
   const metricLabels = isArabic
     ? {
         momentumBefore: "الزخم قبل",
@@ -446,7 +530,7 @@ const PhysicsCollisionSimulation = ({ c }) => {
           <div className="collision-arrow arrow-a" style={{ left: `${Math.max(12, cartAX - 5)}%`, opacity: impact < 0.55 ? 1 : 0.55 }}>{config.velocityA >= 0 ? "→" : "←"}</div>
           <div className="collision-arrow arrow-b" style={{ left: `${Math.min(84, cartBX + 2)}%`, opacity: impact < 0.55 ? 1 : 0.55 }}>{config.velocityB >= 0 ? "→" : "←"}</div>
           <div className="collision-readout">
-            <strong>{config.progress < 48 ? (isArabic ? "قبل التصادم" : "Before impact") : config.collisionType === "elastic" ? (isArabic ? "بعد الارتداد" : "After bounce") : (isArabic ? "حركة مشتركة" : "Joined motion")}</strong>
+            <strong>{!collisionOutcome.canCollide ? (isArabic ? "لا تصادم" : "No collision") : config.progress < 48 ? (isArabic ? "قبل التصادم" : "Before impact") : config.collisionType === "elastic" ? (isArabic ? "بعد الارتداد" : "After bounce") : (isArabic ? "حركة مشتركة" : "Joined motion")}</strong>
             <span>{c.physicsCollisionSummary}</span>
           </div>
         </div>
@@ -1610,9 +1694,8 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
   const sampleTypes = ionPool.map((item) => item.ion);
   const [sampleIndex, setSampleIndex] = useState(() => Math.floor(Math.random() * sampleTypes.length));
   const [selectedReagent, setSelectedReagent] = useState("AgNO3");
-  const [useExcess, setUseExcess] = useState(false);
-  const [guidedMode, setGuidedMode] = useState(true);
-  const [teacherMode, setTeacherMode] = useState(true);
+  const useExcess = false;
+  const guidedMode = true;
   const [log, setLog] = useState([]);
   const [confidence, setConfidence] = useState(16);
   const [possible, setPossible] = useState(sampleTypes);
@@ -1630,7 +1713,6 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
     const nextIndex = Math.floor(Math.random() * sampleTypes.length);
     setSampleIndex(nextIndex);
     setSelectedReagent("AgNO3");
-    setUseExcess(false);
     setLog([]);
     setConfidence(16);
     setPossible(sampleTypes);
@@ -1753,11 +1835,6 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
           ))}
         </div>
         <div className="chem-ion-toggle-row">
-          <button type="button" className={`chem-ion-toggle ${guidedMode ? "active" : ""}`} onClick={() => setGuidedMode((current) => !current)}>{c.chemIonGuidedMode || (isArabic ? "الوضع الموجّه" : "Guided Mode")}</button>
-          <button type="button" className={`chem-ion-toggle ${teacherMode ? "active" : ""}`} onClick={() => setTeacherMode((current) => !current)}>{c.chemIonTeacherMode || (isArabic ? "وضع المعلم" : "Teacher Mode")}</button>
-        </div>
-        <div className="chem-ion-toggle-row">
-          <button type="button" className={`chem-ion-toggle ${useExcess ? "active" : ""}`} onClick={() => setUseExcess((current) => !current)}>{isArabic ? "فائض الكاشف" : "Use excess"}</button>
           <button type="button" className="micro-btn" onClick={makeSample}>{c.chemIonNewSample || (isArabic ? "عينة جديدة" : "Try Another Unknown")}</button>
         </div>
       </aside>
@@ -1822,21 +1899,6 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
             {ionPool.map((item) => (
               <span key={item.ion} className={`chem-ion-chip ${couldBe.includes(item.ion) ? "active" : ""}`}>{item.label}</span>
             ))}
-          </div>
-        </div>
-        <div className="chem-ion-confidence">
-          <div className="chem-panel-head">
-            <strong>{c.chemIonConfidenceTitle || (isArabic ? "مستوى الثقة" : "Confidence")}</strong>
-            <span>{Math.round(confidence)}%</span>
-          </div>
-          <div className="chem-ion-meter"><span style={{ width: `${confidence}%` }}></span></div>
-        </div>
-        <div className="chem-ion-final card-lite">
-          <strong>{c.chemIonFinalTitle || (isArabic ? "الجواب النهائي" : "Final Answer")}</strong>
-          <p>{revealed ? `${finalIonLabel.label} - ${finalIonLabel.name}` : (guidedMode ? (c.chemIonFinalHint || (isArabic ? "استخدم كاشفًا آخر أولًا." : "Use one more reagent first.")) : (isArabic ? "جرّب تحديد الأيون الآن." : "Try identifying the ion now."))}</p>
-          <div className="chem-ion-final-actions">
-            <button className="micro-btn" type="button" onClick={handleFinalAnswer}>{c.chemIonFinalButton || (isArabic ? "حدد الأيون النهائي" : "Identify Final Ion")}</button>
-            <button className="micro-btn secondary" type="button" onClick={() => setRevealed(true)}>{c.chemIonRevealAnswer || (isArabic ? "كشف الجواب" : "Reveal Answer")}</button>
           </div>
         </div>
       </aside>
@@ -1968,6 +2030,7 @@ const ExperimentSection = ({ c, activeProfile, activeMaterial, setActiveMaterial
   };
   const isPhysicsInduction = isPhysics && selectedExperimentIndex !== 1;
   const isRtl = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
+  const isArabic = isRtl;
   const isChemistryIon = isChemistry && selectedExperimentIndex === 1;
   const canOpenQuiz = activeProfile?.role === "student";
   const experimentLabTitle = isPhysics && selectedExperimentIndex === 1
@@ -2109,7 +2172,12 @@ const ExperimentSection = ({ c, activeProfile, activeMaterial, setActiveMaterial
             </div>
           </div>
         ) : isPhysics ? (
-          <PhysicsCollisionSimulation c={c} />
+          <ExperimentErrorBoundary
+            title={c.physicsCollisionName || c.labTitle}
+            message={c.physicsCollisionFallback || (isArabic ? "تعذر تحميل تجربة الزخم حاليًا. حاول تحديث الصفحة." : "The momentum experiment could not load. Try reloading the page.")}
+          >
+            <PhysicsCollisionSimulation c={c} />
+          </ExperimentErrorBoundary>
         ) : isChemistry ? (
           selectedExperimentIndex === 1 ? (
             <ChemistryIonDetectionSimulation c={c} currentMaterial={currentMaterial} resetChemistryExperiment={resetChemistryExperiment} />
@@ -2212,6 +2280,9 @@ const ChatWidget = ({ c, chatOpen, setChatOpen }) => {
 };
 
 const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const showPasswordLabel = c.loginPasswordToggleShow || "إظهار كلمة المرور";
+  const hidePasswordLabel = c.loginPasswordToggleHide || "إخفاء كلمة المرور";
   if (!loginOpen) return null;
 
   const roles = [
@@ -2256,7 +2327,31 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
                 </label>
                 <label className="login-field">
                   <span>{c.loginPasswordLabel}</span>
-                  <input type="password" required minLength="8" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
+                  <div className="password-field">
+                    <input type={passwordVisible ? "text" : "password"} required minLength="8" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
+                    <button
+                      className="password-toggle"
+                      type="button"
+                      onClick={() => setPasswordVisible((current) => !current)}
+                      aria-label={passwordVisible ? hidePasswordLabel : showPasswordLabel}
+                      title={passwordVisible ? hidePasswordLabel : showPasswordLabel}
+                    >
+                      {passwordVisible ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M3 3l18 18" />
+                          <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                          <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.91c5 0 9.27 3.11 11 7.5a11.8 11.8 0 0 1-2.27 3.59" />
+                          <path d="M6.61 6.61C4.62 7.9 3.12 9.92 2 12.41c.88 2.19 2.26 4.05 3.95 5.34" />
+                          <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </label>
               </>
             ) : (
