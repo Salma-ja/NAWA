@@ -265,22 +265,21 @@ function App() {
 
     setLoginSubmitting(true);
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch("https://nawa-1.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          role: selectedRole,
           email: loginForm.email.trim(),
           password: loginForm.password
         })
       });
       const result = await response.json();
       if (!response.ok) {
-        setLoginError(result.message || c.loginErrorGeneric);
+        setLoginError(result.error || c.loginErrorGeneric);
         return;
       }
 
-      setActiveProfile(result.profile);
+      setActiveProfile({ name: result.name, role: result.role });
       setAuthToken(result.token);
       setCurrentView("home");
       setLoginOpen(false);
@@ -341,7 +340,7 @@ function App() {
           {currentView === "dashboard" ? (
             <TeacherDashboard c={c} activeProfile={activeProfile} authToken={authToken} onBack={handleOpenHome} />
           ) : currentView === "quiz" ? (
-            <QuizPage c={c} quizContext={quizContext} onBack={handleOpenHome} />
+            <QuizPage c={c} quizContext={quizContext} onBack={handleOpenHome} authToken={authToken} />
           ) : (
             <>
               <HeroSection c={c} rotation={rotation} onOpenLogin={handleOpenLogin} />
