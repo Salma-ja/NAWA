@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
 const { URL } = require("url");
+const { askTutor, generateQuiz } = require("./agent/agent");
 
 const host = "127.0.0.1";
 const port = Number(process.env.PORT || 4174);
@@ -140,6 +141,10 @@ function getSessionFromRequest(req) {
   return sessions.get(token);
 }
 
+function getRequestLanguage(body) {
+  return String(body?.language || "ar").trim().toLowerCase() === "en" ? "en" : "ar";
+}
+
 async function handleLogin(req, res) {
   try {
     const body = await readJsonBody(req);
@@ -243,6 +248,61 @@ async function handleRegister(req, res) {
   }
 }
 
+async function handleChat(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const message = String(body.message || "").trim();
+
+    if (!message) {
+      sendJson(res, 400, { message: "Enter a message first." });
+      return;
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      sendJson(res, 503, { message: "The tutor is not connected yet. Add OPENAI_API_KEY to web/.env and restart the server." });
+      return;
+    }
+
+    const reply = await askTutor({
+      message,
+      history: Array.isArray(body.history) ? body.history : [],
+      labContext: body.labContext || null,
+      language: getRequestLanguage(body),
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_MODEL
+    });
+
+    sendJson(res, 200, { reply });
+  } catch (error) {
+    sendJson(res, error.status || 500, { message: error.message || "Could not reach the tutor." });
+  }
+}
+
+async function handleQuiz(req, res) {
+  try {
+    const body = await readJsonBody(req);
+
+    if (!process.env.OPENAI_API_KEY) {
+      sendJson(res, 503, { message: "The quiz generator is not connected yet. Add OPENAI_API_KEY to web/.env and restart the server." });
+      return;
+    }
+
+    const questions = await generateQuiz({
+      materialId: body.materialId || "physics",
+      experimentIndex: body.experimentIndex,
+      experimentTitle: body.experimentTitle,
+      language: getRequestLanguage(body),
+      count: Number.isInteger(body.count) ? body.count : 3,
+      apiKey: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_MODEL
+    });
+
+    sendJson(res, 200, { questions });
+  } catch (error) {
+    sendJson(res, error.status || 500, { message: error.message || "Could not generate the quiz." });
+  }
+}
+
 function handleTeacherDashboard(req, res, url) {
   const session = getSessionFromRequest(req);
   if (!session) {
@@ -302,6 +362,21 @@ http.createServer((req, res) => {
 
   if (req.method === "POST" && url.pathname === "/api/auth/register") {
     handleRegister(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/chat") {
+    handleChat(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/quiz") {
+    handleQuiz(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/status") {
+    sendJson(res, 200, { ok: true, aiConnected: Boolean(process.env.OPENAI_API_KEY) });
     return;
   }
 

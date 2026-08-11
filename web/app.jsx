@@ -322,6 +322,27 @@ function App() {
     setCurrentView("quiz");
   };
 
+  const chatContext = useMemo(() => {
+    const materialLabels = {
+      physics: c.subjects?.[0]?.name || "Physics",
+      chemistry: c.subjects?.[1]?.name || "Chemistry",
+      biology: c.subjects?.[2]?.name || "Biology"
+    };
+
+    const state =
+      activeMaterial === "physics"
+        ? { coilTurns, magnetX, inducedSignal, dragging }
+        : activeMaterial === "chemistry"
+          ? chemSettings
+          : bioSettings;
+
+    return {
+      materialId: activeMaterial,
+      materialLabel: materialLabels[activeMaterial] || activeMaterial,
+      state
+    };
+  }, [activeMaterial, bioSettings, c.subjects, chemSettings, coilTurns, dragging, inducedSignal, magnetX]);
+
   const resetBiologyExperiment = () => {
     setBioSettings({
       lightOn: true,
@@ -369,7 +390,7 @@ function App() {
               <FooterSection c={c} />
             </>
           )}
-          <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} />
+          <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} labContext={chatContext} />
           <LoginPortal c={c} loginOpen={loginOpen} authMode={authMode} setAuthMode={setAuthMode} selectedRole={selectedRole} setSelectedRole={setSelectedRole} loginForm={loginForm} setLoginForm={setLoginForm} loginError={loginError} loginSubmitting={loginSubmitting} onClose={handleCloseLogin} onSubmit={handleSubmitLogin} />
         </div>
       </div>
