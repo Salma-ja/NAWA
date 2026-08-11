@@ -1,5 +1,169 @@
 const { useEffect, useState } = React;
 
+const LOCAL_AUTH_USERS_KEY = "nawa-local-users-v1";
+const LOCAL_AUTH_SESSION_KEY = "nawa-local-session-v1";
+const LOCAL_TEACHER_ACCESS_CODE = "NAWA-TEACHER-2026";
+
+const LOCAL_TEACHER_DASHBOARD = {
+  summary: [
+    { value: "26", title: "Active students", text: "Students who opened a lab or completed an activity in the last 24 hours." },
+    { value: "7", title: "Labs in progress", text: "Experiments that still need a follow-up discussion in class." },
+    { value: "88%", title: "Average completion", text: "Average progress across the current class sections." }
+  ],
+  students: [
+    { id: "ST-201", name: "Laith Al-Ajarmeh", grade: "Grade 9", section: "9-A", experiment: "Electromagnetic induction", progress: 92, quizScore: 9, lastActive: "12 minutes ago", status: "Complete" },
+    { id: "ST-202", name: "Saja Al-Khawaldeh", grade: "Grade 9", section: "9-A", experiment: "Galvanic cell", progress: 74, quizScore: 7, lastActive: "25 minutes ago", status: "In progress" },
+    { id: "ST-203", name: "Mohammad Al-Shawabkeh", grade: "Grade 10", section: "10-B", experiment: "DNA replication", progress: 58, quizScore: 6, lastActive: "40 minutes ago", status: "Needs support" },
+    { id: "ST-204", name: "Tala Nassar", grade: "Grade 10", section: "10-B", experiment: "Linear momentum", progress: 84, quizScore: 8, lastActive: "1 hour ago", status: "Complete" },
+    { id: "ST-205", name: "Adam Al-Zoubi", grade: "Grade 8", section: "8-C", experiment: "Electromagnetic induction", progress: 37, quizScore: 4, lastActive: "2 hours ago", status: "Needs support" }
+  ]
+};
+
+const readLocalUsers = () => {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(LOCAL_AUTH_USERS_KEY);
+    const users = raw ? JSON.parse(raw) : [];
+    return Array.isArray(users) ? users : [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const writeLocalUsers = (users) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_AUTH_USERS_KEY, JSON.stringify(users));
+};
+
+const saveLocalSession = (session) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(LOCAL_AUTH_SESSION_KEY, JSON.stringify(session));
+};
+
+const loadLocalSession = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LOCAL_AUTH_SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+const createLocalProfile = (user) => ({
+  id: user.id,
+  name: user.name,
+  email: user.email,
+  role: user.role
+});
+
+const hashBrowserPassword = async (password) => {
+  if (typeof window === "undefined" || !window.crypto?.subtle) {
+    return btoa(unescape(encodeURIComponent(password)));
+  }
+  const encoded = new TextEncoder().encode(password);
+  const buffer = await window.crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(buffer)).map((value) => value.toString(16).padStart(2, "0")).join("");
+};
+
+const shouldUseLocalAuth = () => {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host !== "127.0.0.1" && host !== "localhost";
+};
+
+const localPlatform = {
+  shouldUseLocalAuth,
+  loadSession: loadLocalSession,
+  clearSession() {
+    if (typeof window === "undefined") return;
+    window.localStorage.removeItem(LOCAL_AUTH_SESSION_KEY);
+  },
+  async register({ name, email, password, role, teacherAccessCode }) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    if (!name || !normalizedEmail || !password) {
+      throw new Error("Complete your name, email, and password to create an account.");
+    }
+    if (password.length < 8) {
+      throw new Error("Password must be at least 8 characters long.");
+    }
+    if (role === "teacher" && String(teacherAccessCode || "").trim() !== LOCAL_TEACHER_ACCESS_CODE) {
+      throw new Error("Teacher accounts require a valid access code.");
+    }
+
+    const users = readLocalUsers();
+    if (users.some((user) => user.email === normalizedEmail)) {
+      throw new Error("This email is already registered. Sign in instead.");
+    }
+
+    const user = {
+      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: String(name).trim(),
+      email: normalizedEmail,
+      role,
+      passwordHash: await hashBrowserPassword(password)
+    };
+    users.push(user);
+    writeLocalUsers(users);
+
+    const session = {
+      token: `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      profile: createLocalProfile(user)
+    };
+    saveLocalSession(session);
+    return session;
+  },
+  async login({ email, password, role }) {
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const users = readLocalUsers();
+    const user = users.find((item) => item.email === normalizedEmail && item.role === role);
+    if (!user) {
+      throw new Error("This account was not found for the selected role.");
+    }
+
+    const passwordHash = await hashBrowserPassword(password);
+    if (user.passwordHash !== passwordHash) {
+      throw new Error("Incorrect password. Try again.");
+    }
+
+    const session = {
+      token: `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      profile: createLocalProfile(user)
+    };
+    saveLocalSession(session);
+    return session;
+  },
+  getTeacherDashboard(profile, { query = "", sort = "progress" } = {}) {
+    const dataset = {
+      teacherName: profile?.name || "Teacher",
+      summary: LOCAL_TEACHER_DASHBOARD.summary,
+      students: [...LOCAL_TEACHER_DASHBOARD.students]
+    };
+    const normalizedQuery = String(query || "").trim().toLowerCase();
+    let students = dataset.students;
+    if (normalizedQuery) {
+      students = students.filter((student) =>
+        [student.name, student.grade, student.section, student.experiment, student.status]
+          .some((value) => String(value).toLowerCase().includes(normalizedQuery))
+      );
+    }
+    const sorters = {
+      progress: (a, b) => b.progress - a.progress,
+      score: (a, b) => b.quizScore - a.quizScore,
+      name: (a, b) => a.name.localeCompare(b.name, "en"),
+      recent: (a, b) => a.id.localeCompare(b.id, "en")
+    };
+    students.sort(sorters[sort] || sorters.progress);
+    return {
+      teacherName: dataset.teacherName,
+      summary: dataset.summary,
+      students
+    };
+  }
+};
+
+window.NawaLocalPlatform = localPlatform;
+
 const Counter = ({ target, suffix = "", duration = 1600 }) => {
   const [count, setCount] = useState(0);
   const isNumericTarget = Number.isFinite(target);
@@ -2211,13 +2375,22 @@ const ChatWidget = ({ c, chatOpen, setChatOpen }) => {
   );
 };
 
-const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {
+const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const showPasswordLabel = c.loginPasswordToggleShow || "إظهار كلمة المرور";
+  const hidePasswordLabel = c.loginPasswordToggleHide || "إخفاء كلمة المرور";
   if (!loginOpen) return null;
+  const isRegisterMode = authMode === "register";
+  const signInLabel = c.loginSignIn || "Sign in";
+  const createAccountLabel = c.loginCreateAccount || "Create account";
+  const createAccountNote = c.loginCreateNote || "Create a secure account to access the platform.";
+  const createAccountHelper = c.loginCreateHelper || "Students can create an account directly. Teachers need an access code.";
+  const teacherAccessCodeLabel = c.loginTeacherAccessCodeLabel || "Teacher access code";
+  const teacherAccessCodePlaceholder = c.loginTeacherAccessCodePlaceholder || "Enter teacher access code";
 
   const roles = [
     { id: "teacher", title: c.loginRoles.teacher.title, text: c.loginRoles.teacher.text },
     { id: "student", title: c.loginRoles.student.title, text: c.loginRoles.student.text },
-    { id: "guest", title: c.loginRoles.guest.title, text: c.loginRoles.guest.text }
   ];
 
   return (
@@ -2228,6 +2401,10 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
           <div className="eyebrow login-eyebrow"><span className="eyebrow-dot" aria-hidden="true"></span><span>{c.loginEyebrow}</span></div>
           <h2 id="login-title">{c.loginTitle}</h2>
           <p>{c.loginText}</p>
+        </div>
+        <div className="auth-mode-switch">
+          <button className={`btn ${authMode === "login" ? "btn-primary" : "btn-secondary"}`} type="button" onClick={() => setAuthMode("login")}>{signInLabel}</button>
+          <button className={`btn ${isRegisterMode ? "btn-primary" : "btn-secondary"}`} type="button" onClick={() => setAuthMode("register")}>{createAccountLabel}</button>
         </div>
         <div className="login-role-grid">
           {roles.map((role) => (
@@ -2242,13 +2419,58 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
             </button>
           ))}
         </div>
-        <form className="login-form-card" onSubmit={onSubmit} noValidate={selectedRole === "guest"}>
+        <form className="login-form-card" onSubmit={onSubmit} noValidate={false}>
           <div className="login-form-head">
             <strong>{c.loginRoles[selectedRole].title}</strong>
-            <span>{selectedRole === "guest" ? c.loginGuestNote : c.loginFormNote}</span>
+            <span>{isRegisterMode ? createAccountNote : c.loginFormNote}</span>
           </div>
-          <div className={`login-form-grid ${selectedRole === "guest" ? "guest" : "member"}`}>
-            {selectedRole !== "guest" ? (
+          <div className={`login-form-grid ${isRegisterMode ? "register" : "member"}`}>
+            {isRegisterMode ? (
+              <>
+                <label className="login-field">
+                  <span>{c.loginNameLabel}</span>
+                  <input type="text" required value={loginForm.name} onChange={(event) => setLoginForm({ ...loginForm, name: event.target.value })} placeholder={c.loginNamePlaceholder} />
+                </label>
+                <label className="login-field">
+                  <span>{c.loginEmailLabel}</span>
+                  <input type="email" required value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
+                </label>
+                <label className="login-field">
+                  <span>{c.loginPasswordLabel}</span>
+                  <div className="password-field">
+                    <input type={passwordVisible ? "text" : "password"} required minLength="8" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
+                    <button
+                      className="password-toggle"
+                      type="button"
+                      onClick={() => setPasswordVisible((current) => !current)}
+                      aria-label={passwordVisible ? hidePasswordLabel : showPasswordLabel}
+                      title={passwordVisible ? hidePasswordLabel : showPasswordLabel}
+                    >
+                      {passwordVisible ? (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M3 3l18 18" />
+                          <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                          <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.91c5 0 9.27 3.11 11 7.5a11.8 11.8 0 0 1-2.27 3.59" />
+                          <path d="M6.61 6.61C4.62 7.9 3.12 9.92 2 12.41c.88 2.19 2.26 4.05 3.95 5.34" />
+                          <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88" />
+                        </svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </label>
+                {selectedRole === "teacher" ? (
+                  <label className="login-field">
+                    <span>{teacherAccessCodeLabel}</span>
+                    <input type="text" required value={loginForm.teacherAccessCode} onChange={(event) => setLoginForm({ ...loginForm, teacherAccessCode: event.target.value })} placeholder={teacherAccessCodePlaceholder} />
+                  </label>
+                ) : null}
+              </>
+            ) : (
               <>
                 <label className="login-field">
                   <span>{c.loginEmailLabel}</span>
@@ -2259,19 +2481,14 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
                   <input type="password" required minLength="8" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
                 </label>
               </>
-            ) : (
-              <label className="login-field">
-                <span>{c.loginGuestLabel}</span>
-                <input type="text" value={loginForm.purpose} onChange={(event) => setLoginForm({ ...loginForm, purpose: event.target.value })} placeholder={c.loginGuestPlaceholder} />
-              </label>
             )}
           </div>
           {loginError ? <div className="login-error" role="alert">{loginError}</div> : null}
           <div className="login-actions">
             <button className="btn btn-secondary" type="button" onClick={onClose}>{c.loginCancel}</button>
-            <button className="btn btn-primary" type="submit" disabled={loginSubmitting}>{loginSubmitting ? c.loginSubmitting : c.loginContinue}</button>
+            <button className="btn btn-primary" type="submit" disabled={loginSubmitting}>{loginSubmitting ? c.loginSubmitting : (isRegisterMode ? createAccountLabel : c.loginContinue)}</button>
           </div>
-          <div className="login-helper">{selectedRole === "guest" ? c.loginGuestHelper : c.loginMemberHelper}</div>
+          <div className="login-helper">{isRegisterMode ? createAccountHelper : c.loginMemberHelper}</div>
         </form>
       </div>
     </div>
@@ -2290,7 +2507,21 @@ const TeacherDashboard = ({ c, activeProfile, authToken, onBack }) => {
 
     setDashboardState((current) => ({ ...current, loading: true, error: "" }));
     try {
-      const response = await fetch("https://nawa-1.onrender.com/dashboard", {
+      if (window.NawaLocalPlatform?.shouldUseLocalAuth()) {
+        const result = window.NawaLocalPlatform.getTeacherDashboard(activeProfile, { query: searchText, sort: nextSort });
+        setDashboardState({
+          loading: false,
+          error: "",
+          summary: result.summary || [],
+          students: result.students || []
+        });
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (searchText.trim()) params.set("q", searchText.trim());
+      params.set("sort", nextSort);
+      const response = await fetch(`/api/teacher/dashboard?${params.toString()}`, {
         headers: { Authorization: `Bearer ${authToken}` }
       });
       const result = await response.json();
@@ -2339,6 +2570,16 @@ const TeacherDashboard = ({ c, activeProfile, authToken, onBack }) => {
         students: filtered
       });
     } catch (error) {
+      if (window.NawaLocalPlatform?.shouldUseLocalAuth()) {
+        const result = window.NawaLocalPlatform.getTeacherDashboard(activeProfile, { query: searchText, sort: nextSort });
+        setDashboardState({
+          loading: false,
+          error: "",
+          summary: result.summary || [],
+          students: result.students || []
+        });
+        return;
+      }
       setDashboardState({ loading: false, error: c.teacherDashboardLoadError, summary: [], students: [] });
     }
   };

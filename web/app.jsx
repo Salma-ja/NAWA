@@ -7,6 +7,7 @@ function App() {
   const [theme, setTheme] = useState("dark");
   const [chatOpen, setChatOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
+  const [authMode, setAuthMode] = useState("login");
   const [loginError, setLoginError] = useState("");
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [selectedRole, setSelectedRole] = useState("student");
@@ -15,7 +16,7 @@ function App() {
   const [currentView, setCurrentView] = useState("home");
   const [quizContext, setQuizContext] = useState(null);
   const [activeMaterial, setActiveMaterial] = useState("physics");
-  const [loginForm, setLoginForm] = useState({ email: "", password: "", purpose: "" });
+  const [loginForm, setLoginForm] = useState({ name: "", email: "", password: "", teacherAccessCode: "" });
   const [chemSettings, setChemSettings] = useState({
     anode: "Zn",
     cathode: "Cu",
@@ -47,6 +48,13 @@ function App() {
   const isArabic = language === "ar";
   const isTeacher = activeProfile?.role === "teacher";
   const activeProfileLabel = activeProfile ? `${c.loginRoles[activeProfile.role].title}: ${activeProfile.name}` : "";
+
+  useEffect(() => {
+    const savedSession = window.NawaLocalPlatform?.loadSession?.();
+    if (!savedSession?.profile || !savedSession?.token) return;
+    setActiveProfile(savedSession.profile);
+    setAuthToken(savedSession.token);
+  }, []);
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -240,52 +248,63 @@ function App() {
     return () => window.clearInterval(timer);
   }, [dragging, coilTurns]);
 
-  const handleOpenLogin = () => setLoginOpen(true);
+  const handleOpenLogin = () => {
+    setAuthMode("login");
+    setLoginOpen(true);
+  };
 
   const handleCloseLogin = () => {
     setLoginOpen(false);
     setLoginError("");
+    setLoginSubmitting(false);
   };
 
   const handleSubmitLogin = async (event) => {
     event.preventDefault();
     setLoginError("");
-
-    if (selectedRole === "guest") {
-      const fallbackName = loginForm.purpose.trim() || c.loginRoles.guest.title;
-      setActiveProfile({
-        role: "guest",
-        name: fallbackName
-      });
-      setAuthToken("");
-      setCurrentView("home");
-      setLoginOpen(false);
-      return;
-    }
-
     setLoginSubmitting(true);
     try {
-      const response = await fetch("https://nawa-1.onrender.com/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: loginForm.email.trim(),
-          password: loginForm.password
-        })
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        setLoginError(result.error || c.loginErrorGeneric);
-        return;
+      const payload = authMode === "register"
+        ? {
+            name: loginForm.name.trim(),
+            role: selectedRole,
+            email: loginForm.email.trim(),
+            password: loginForm.password,
+            teacherAccessCode: loginForm.teacherAccessCode.trim()
+          }
+        : {
+            role: selectedRole,
+            email: loginForm.email.trim(),
+            password: loginForm.password
+          };
+
+      let result;
+      if (window.NawaLocalPlatform?.shouldUseLocalAuth()) {
+        result = authMode === "register"
+          ? await window.NawaLocalPlatform.register(payload)
+          : await window.NawaLocalPlatform.login(payload);
+      } else {
+        const endpoint = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        result = await response.json();
+        if (!response.ok) {
+          setLoginError(result.message || c.loginErrorGeneric);
+          return;
+        }
       }
 
-      setActiveProfile({ name: result.name, role: result.role });
+      setActiveProfile(result.profile);
       setAuthToken(result.token);
       setCurrentView("home");
       setLoginOpen(false);
-      setLoginForm({ email: "", password: "", purpose: "" });
+      setAuthMode("login");
+      setLoginForm({ name: "", email: "", password: "", teacherAccessCode: "" });
     } catch (error) {
-      setLoginError(c.loginErrorNetwork);
+      setLoginError(error?.message || c.loginErrorNetwork);
     } finally {
       setLoginSubmitting(false);
     }
@@ -351,7 +370,7 @@ function App() {
             </>
           )}
           <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} />
-          <LoginPortal c={c} loginOpen={loginOpen} selectedRole={selectedRole} setSelectedRole={setSelectedRole} loginForm={loginForm} setLoginForm={setLoginForm} loginError={loginError} loginSubmitting={loginSubmitting} onClose={handleCloseLogin} onSubmit={handleSubmitLogin} />
+          <LoginPortal c={c} loginOpen={loginOpen} authMode={authMode} setAuthMode={setAuthMode} selectedRole={selectedRole} setSelectedRole={setSelectedRole} loginForm={loginForm} setLoginForm={setLoginForm} loginError={loginError} loginSubmitting={loginSubmitting} onClose={handleCloseLogin} onSubmit={handleSubmitLogin} />
         </div>
       </div>
     </div>

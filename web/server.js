@@ -1,11 +1,15 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { URL } = require("url");
 
 const host = "127.0.0.1";
-const port = 4174;
+const port = Number(process.env.PORT || 4174);
 const root = __dirname;
+const teacherAccessCode = process.env.NAWA_TEACHER_ACCESS_CODE || "NAWA-TEACHER-2026";
+const dataDir = path.join(root, "data");
+const usersFile = path.join(dataDir, "users.json");
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -21,39 +25,24 @@ const mimeTypes = {
 };
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const roles = new Set(["teacher", "student"]);
 const sessions = new Map();
 
-const users = [
-  { id: "t-001", role: "teacher", email: "teacher@nawa.lab", password: "Teacher@123", name: "أحمد الخطيب" },
-  { id: "t-002", role: "teacher", email: "science.lead@nawa.lab", password: "Teacher@123", name: "سارة العبدالله" },
-  { id: "s-001", role: "student", email: "student@nawa.lab", password: "Student@123", name: "ليث العجارمة" },
-  { id: "s-002", role: "student", email: "learner@nawa.lab", password: "Student@123", name: "تالا نصار" }
-];
-
 const teacherDashboardData = {
-  "t-001": {
-    teacherName: "أحمد الخطيب",
+  "teacher-demo-1": {
+    teacherName: "Ahmad Al-Khatib",
     summary: [
-      { value: "26", title: "طلاب نشطون", text: "عدد الطلاب الذين فتحوا تجربة أو أكملوا نشاطًا خلال آخر 24 ساعة." },
-      { value: "7", title: "تجارب قيد المتابعة", text: "تجارب مفتوحة حاليًا وتحتاج متابعة أو نقاشًا داخل الصف." },
-      { value: "88%", title: "متوسط الإنجاز", text: "متوسط إكمال التجارب والاختبارات القصيرة في الشعب الحالية." }
+      { value: "26", title: "Active students", text: "Students who opened a lab or completed an activity in the last 24 hours." },
+      { value: "7", title: "Labs in progress", text: "Experiments that still need a follow-up discussion in class." },
+      { value: "88%", title: "Average completion", text: "Average progress across the current class sections." }
     ],
     students: [
-      { id: "ST-201", name: "ليث العجارمة", grade: "الصف التاسع", section: "9-أ", experiment: "الحث الكهرومغناطيسي", progress: 92, quizScore: 9, lastActive: "منذ 12 دقيقة", status: "مكتمل" },
-      { id: "ST-202", name: "سجى الخوالدة", grade: "الصف التاسع", section: "9-أ", experiment: "الخلية الجلفانية", progress: 74, quizScore: 7, lastActive: "منذ 25 دقيقة", status: "يتابع" },
-      { id: "ST-203", name: "محمد الشوابكة", grade: "الصف العاشر", section: "10-ب", experiment: "تضاعف DNA", progress: 58, quizScore: 6, lastActive: "منذ 40 دقيقة", status: "يحتاج دعم" },
-      { id: "ST-204", name: "تالا نصار", grade: "الصف العاشر", section: "10-ب", experiment: "التصادم الخطي", progress: 84, quizScore: 8, lastActive: "منذ ساعة", status: "مكتمل" },
-      { id: "ST-205", name: "آدم الزعبي", grade: "الصف الثامن", section: "8-ج", experiment: "الحث الكهرومغناطيسي", progress: 37, quizScore: 4, lastActive: "منذ ساعتين", status: "يحتاج دعم" }
+      { id: "ST-201", name: "Laith Al-Ajarmeh", grade: "Grade 9", section: "9-A", experiment: "Electromagnetic induction", progress: 92, quizScore: 9, lastActive: "12 minutes ago", status: "Complete" },
+      { id: "ST-202", name: "Saja Al-Khawaldeh", grade: "Grade 9", section: "9-A", experiment: "Galvanic cell", progress: 74, quizScore: 7, lastActive: "25 minutes ago", status: "In progress" },
+      { id: "ST-203", name: "Mohammad Al-Shawabkeh", grade: "Grade 10", section: "10-B", experiment: "DNA replication", progress: 58, quizScore: 6, lastActive: "40 minutes ago", status: "Needs support" },
+      { id: "ST-204", name: "Tala Nassar", grade: "Grade 10", section: "10-B", experiment: "Linear momentum", progress: 84, quizScore: 8, lastActive: "1 hour ago", status: "Complete" },
+      { id: "ST-205", name: "Adam Al-Zoubi", grade: "Grade 8", section: "8-C", experiment: "Electromagnetic induction", progress: 37, quizScore: 4, lastActive: "2 hours ago", status: "Needs support" }
     ]
-  },
-  "t-002": {
-    teacherName: "سارة العبدالله",
-    summary: [
-      { value: "0", title: "طلاب نشطون", text: "لا يوجد نشاط طلابي مسجل لهذه الشعبة حتى الآن." },
-      { value: "0", title: "تجارب قيد المتابعة", text: "لم يتم فتح أي تجربة بعد من هذه المجموعة." },
-      { value: "--", title: "متوسط الإنجاز", text: "سيظهر المتوسط تلقائيًا بعد بدء أول نشاط طلابي." }
-    ],
-    students: []
   }
 };
 
@@ -63,6 +52,44 @@ function sendJson(res, statusCode, payload) {
     "Cache-Control": "no-store"
   });
   res.end(JSON.stringify(payload));
+}
+
+function ensureUserStore() {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+  if (!fs.existsSync(usersFile)) {
+    fs.writeFileSync(usersFile, "[]", "utf8");
+  }
+}
+
+function loadUsers() {
+  ensureUserStore();
+  try {
+    const raw = fs.readFileSync(usersFile, "utf8");
+    const users = JSON.parse(raw);
+    return Array.isArray(users) ? users : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveUsers(users) {
+  ensureUserStore();
+  fs.writeFileSync(usersFile, JSON.stringify(users, null, 2), "utf8");
+}
+
+function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  if (!storedHash || !storedHash.includes(":")) return false;
+  const [salt, originalHash] = storedHash.split(":");
+  const nextHash = crypto.scryptSync(password, salt, 64).toString("hex");
+  return crypto.timingSafeEqual(Buffer.from(originalHash, "hex"), Buffer.from(nextHash, "hex"));
 }
 
 function readJsonBody(req) {
@@ -86,6 +113,26 @@ function readJsonBody(req) {
   });
 }
 
+function sanitizeProfile(user) {
+  return {
+    id: String(user.id),
+    role: user.role,
+    email: user.email,
+    name: user.name
+  };
+}
+
+function createSession(user) {
+  const token = `nawa-${crypto.randomUUID()}`;
+  sessions.set(token, {
+    userId: String(user.id),
+    role: user.role,
+    email: user.email,
+    name: user.name
+  });
+  return token;
+}
+
 function getSessionFromRequest(req) {
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
@@ -93,61 +140,118 @@ function getSessionFromRequest(req) {
   return sessions.get(token);
 }
 
-function handleLogin(req, res) {
-  readJsonBody(req)
-    .then((body) => {
-      const email = String(body.email || "").trim().toLowerCase();
-      const password = String(body.password || "");
-      const role = String(body.role || "").trim();
+async function handleLogin(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const role = String(body.role || "").trim().toLowerCase();
 
-      if (!email || !password) {
-        sendJson(res, 400, { message: "يرجى إدخال البريد الإلكتروني وكلمة المرور." });
-        return;
-      }
+    if (!email || !password) {
+      sendJson(res, 400, { message: "Enter both email and password." });
+      return;
+    }
 
-      if (!emailPattern.test(email)) {
-        sendJson(res, 400, { message: "صيغة البريد الإلكتروني غير صحيحة." });
-        return;
-      }
+    if (!emailPattern.test(email)) {
+      sendJson(res, 400, { message: "Enter a valid email address." });
+      return;
+    }
 
-      const user = users.find((item) => item.email.toLowerCase() === email && item.role === role);
-      if (!user || user.password !== password) {
-        sendJson(res, 401, { message: "بيانات الدخول غير صحيحة. تأكد من البريد الإلكتروني وكلمة المرور." });
-        return;
-      }
+    if (!roles.has(role)) {
+      sendJson(res, 400, { message: "Choose a valid account type before signing in." });
+      return;
+    }
 
-      const token = `nawa-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-      sessions.set(token, {
-        userId: user.id,
-        role: user.role,
-        email: user.email,
-        name: user.name
-      });
+    const user = loadUsers().find((item) => item.email === email);
+    if (!user || user.role !== role) {
+      sendJson(res, 401, { message: "This account was not found for the selected role." });
+      return;
+    }
 
-      sendJson(res, 200, {
-        token,
-        profile: {
-          id: user.id,
-          role: user.role,
-          email: user.email,
-          name: user.name
-        }
-      });
-    })
-    .catch(() => {
-      sendJson(res, 400, { message: "تعذر قراءة بيانات الدخول. حاول مرة أخرى." });
+    const passwordMatches = verifyPassword(password, user.passwordHash);
+    if (!passwordMatches) {
+      sendJson(res, 401, { message: "Incorrect password. Try again." });
+      return;
+    }
+
+    const token = createSession(user);
+    sendJson(res, 200, { token, profile: sanitizeProfile(user) });
+  } catch (error) {
+    sendJson(res, 400, { message: "Could not read the login request. Please try again." });
+  }
+}
+
+async function handleRegister(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const name = String(body.name || "").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "");
+    const role = String(body.role || "").trim().toLowerCase();
+    const accessCode = String(body.teacherAccessCode || "").trim();
+
+    if (!name || !email || !password) {
+      sendJson(res, 400, { message: "Complete your name, email, and password to create an account." });
+      return;
+    }
+
+    if (!roles.has(role)) {
+      sendJson(res, 400, { message: "Choose whether this account belongs to a student or teacher." });
+      return;
+    }
+
+    if (!emailPattern.test(email)) {
+      sendJson(res, 400, { message: "Enter a valid email address." });
+      return;
+    }
+
+    if (password.length < 8) {
+      sendJson(res, 400, { message: "Password must be at least 8 characters long." });
+      return;
+    }
+
+    if (role === "teacher" && accessCode !== teacherAccessCode) {
+      sendJson(res, 403, { message: "Teacher accounts require a valid access code." });
+      return;
+    }
+
+    const users = loadUsers();
+    const existingUser = users.find((item) => item.email === email);
+    if (existingUser) {
+      sendJson(res, 409, { message: "This email is already registered. Sign in instead." });
+      return;
+    }
+
+    const user = {
+      id: `user-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`,
+      name,
+      email,
+      role,
+      passwordHash: hashPassword(password),
+      createdAt: new Date().toISOString()
+    };
+    users.push(user);
+    saveUsers(users);
+
+    const token = createSession(user);
+    sendJson(res, 201, {
+      token,
+      profile: sanitizeProfile(user)
     });
+  } catch (error) {
+    sendJson(res, 400, { message: "Could not create the account. Please try again." });
+  }
 }
 
 function handleTeacherDashboard(req, res, url) {
   const session = getSessionFromRequest(req);
   if (!session) {
-    sendJson(res, 401, { message: "انتهت الجلسة أو لم يتم تسجيل الدخول." });
+    sendJson(res, 401, { message: "Your session has expired. Sign in again." });
     return;
   }
 
   if (session.role !== "teacher") {
-    sendJson(res, 403, { message: "هذه الصفحة متاحة للمعلم فقط." });
+    sendJson(res, 403, { message: "Only teachers can open this dashboard." });
     return;
   }
 
@@ -155,7 +259,11 @@ function handleTeacherDashboard(req, res, url) {
   const sort = (url.searchParams.get("sort") || "progress").trim();
   const dataset = teacherDashboardData[session.userId] || {
     teacherName: session.name,
-    summary: [],
+    summary: [
+      { value: "0", title: "Active students", text: "No student activity has been recorded for this teacher yet." },
+      { value: "0", title: "Labs in progress", text: "No experiment sessions have been tracked yet." },
+      { value: "--", title: "Average completion", text: "Completion data will appear after students start using the labs." }
+    ],
     students: []
   };
 
@@ -170,7 +278,7 @@ function handleTeacherDashboard(req, res, url) {
   const sorters = {
     progress: (a, b) => b.progress - a.progress,
     score: (a, b) => b.quizScore - a.quizScore,
-    name: (a, b) => a.name.localeCompare(b.name, "ar"),
+    name: (a, b) => a.name.localeCompare(b.name, "en"),
     recent: (a, b) => a.id.localeCompare(b.id, "en")
   };
   students.sort(sorters[sort] || sorters.progress);
@@ -189,6 +297,11 @@ http.createServer((req, res) => {
 
   if (req.method === "POST" && url.pathname === "/api/auth/login") {
     handleLogin(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/auth/register") {
+    handleRegister(req, res);
     return;
   }
 

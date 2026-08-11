@@ -803,8 +803,19 @@
 
     .login-role-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
+    }
+
+    .auth-mode-switch {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .auth-mode-switch .btn {
+      width: 100%;
+      justify-content: center;
     }
 
     .login-role-card {
@@ -872,7 +883,7 @@
     }
 
     .login-form-grid.member,
-    .login-form-grid.guest {
+    .login-form-grid.register {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 

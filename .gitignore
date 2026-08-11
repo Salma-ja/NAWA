@@ -12,3 +12,5 @@ Thumbs.db
 # Node
 node_modules/
 npm-debug.log*
+web/data/users.json
+dist/

@@ -194,8 +194,22 @@ Object.assign(window.NAWA_CONTENT.en, {
     guest: { title: "Guest", text: "Preview the platform experience without a school account." }
   }
 });
+Object.assign(window.NAWA_CONTENT.en, {
+  loginSignIn: "Sign in",
+  loginCreateAccount: "Create account",
+  loginCreateNote: "Create a secure account to access the platform.",
+  loginCreateHelper: "Students can create an account directly. Teachers need an access code.",
+  loginTeacherAccessCodeLabel: "Teacher access code",
+  loginTeacherAccessCodePlaceholder: "Enter teacher access code"
+});
 
 Object.assign(window.NAWA_CONTENT.ar, {
+  loginSignIn: "\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644",
+  loginCreateAccount: "\u0625\u0646\u0634\u0627\u0621 \u062d\u0633\u0627\u0628",
+  loginCreateNote: "\u0623\u0646\u0634\u0626 \u062d\u0633\u0627\u0628\u064b\u0627 \u0622\u0645\u0646\u064b\u0627 \u0644\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 \u0627\u0644\u0645\u0646\u0635\u0629.",
+  loginCreateHelper: "\u064a\u0633\u062a\u0637\u064a\u0639 \u0627\u0644\u0637\u0644\u0628\u0629 \u0625\u0646\u0634\u0627\u0621 \u062d\u0633\u0627\u0628 \u0645\u0628\u0627\u0634\u0631\u0629\u060c \u0623\u0645\u0627 \u062d\u0633\u0627\u0628 \u0627\u0644\u0645\u0639\u0644\u0645 \u0641\u064a\u062d\u062a\u0627\u062c \u0631\u0645\u0632 \u0648\u0635\u0648\u0644.",
+  loginTeacherAccessCodeLabel: "\u0631\u0645\u0632 \u0648\u0635\u0648\u0644 \u0627\u0644\u0645\u0639\u0644\u0645",
+  loginTeacherAccessCodePlaceholder: "\u0623\u062f\u062e\u0644 \u0631\u0645\u0632 \u0648\u0635\u0648\u0644 \u0627\u0644\u0645\u0639\u0644\u0645",
   chemQuestions: [
     {
       question: "\u0644\u0645\u0627\u0630\u0627 \u064a\u0639\u062f \u0627\u0644\u0632\u0646\u0643 \u0623\u0641\u0636\u0644 \u0643\u0623\u0646\u0648\u062f \u0641\u064a \u0627\u0644\u062e\u0644\u064a\u0629 \u0627\u0644\u063a\u0644\u0641\u0627\u0646\u064a\u0629\u061f",

@@ -1,0 +1,16 @@
+[build]
+  command = """
+    rm -rf dist &&
+    mkdir -p dist &&
+    cp web/index.html dist/index.html &&
+    cp web/styles.css dist/styles.css &&
+    cp web/content.js dist/content.js &&
+    cp web/content-overrides.js dist/content-overrides.js &&
+    cp web/content-agent.js dist/content-agent.js &&
+    cp web/components.jsx dist/components.jsx &&
+    cp web/app.jsx dist/app.jsx
+  """
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
