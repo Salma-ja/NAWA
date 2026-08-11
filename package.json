@@ -1,0 +1,11 @@
+{
+  "name": "nawa-lab-site",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "vite": "^7.1.3"
+  }
+}
