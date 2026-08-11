@@ -7061,6 +7061,174 @@
       }
     }
 
+    @media (max-width: 900px) {
+      .nav {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        padding: 12px 14px;
+      }
+
+      .brand {
+        width: 100%;
+        justify-content: space-between;
+      }
+
+      .nav-links {
+        width: 100%;
+        overflow: auto;
+        padding-bottom: 4px;
+        justify-content: flex-start;
+        gap: 18px;
+        scrollbar-width: none;
+      }
+
+      .nav-links::-webkit-scrollbar {
+        display: none;
+      }
+
+      .nav-actions {
+        width: 100%;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+
+      .hero {
+        grid-template-columns: 1fr;
+        gap: 18px;
+      }
+
+      .hero-visual {
+        order: -1;
+        min-height: 0;
+      }
+
+      .hero-lab {
+        min-height: 640px;
+      }
+
+      .science-preview {
+        position: relative !important;
+        inset: auto !important;
+        width: 100%;
+        transform: none !important;
+        margin-top: 12px;
+      }
+
+      .induction-grid,
+      .collision-grid,
+      .chem-lab-v2,
+      .chem-galv-grid,
+      .chem-ion-lab {
+        grid-template-columns: 1fr;
+      }
+
+      .experiment-picker-grid,
+      .teacher-dashboard-grid,
+      .quiz-options,
+      .contact-cards,
+      .bio-chart-grid,
+      .bio-result-grid,
+      .chem-story-grid,
+      .chem-results-grid,
+      .chemv2-bottom-grid,
+      .chemv2-micro-cards,
+      .chemv2-stepbar {
+        grid-template-columns: 1fr;
+      }
+
+      .login-shell {
+        width: min(920px, calc(100% - 12px));
+        padding: 20px 16px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        width: min(var(--container), calc(100% - 14px));
+      }
+
+      .brand-wordmark {
+        font-size: 16px;
+      }
+
+      .hero h1 {
+        font-size: clamp(30px, 12vw, 40px);
+      }
+
+      .hero p {
+        font-size: 15px;
+      }
+
+      .hero-cta,
+      .hero-tag {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .dashboard {
+        padding: 14px;
+      }
+
+      .hero-lab {
+        min-height: 520px;
+      }
+
+      .nucleus-stage {
+        min-height: 360px;
+        padding-top: 160px;
+      }
+
+      .nucleus-core {
+        width: 128px;
+        height: 128px;
+      }
+
+      .nucleus-core strong {
+        font-size: 22px;
+      }
+
+      .science-preview-copy h3 {
+        font-size: 16px;
+      }
+
+      .science-preview-copy p {
+        font-size: 12.5px;
+      }
+
+      .login-shell {
+        padding: 18px 14px;
+      }
+
+      .login-actions {
+        flex-direction: column;
+      }
+
+      .login-actions .btn {
+        width: 100%;
+      }
+
+      .experiment-picker-card,
+      .lab-experiment,
+      .teacher-dashboard-shell,
+      .teacher-dashboard-hero,
+      .teacher-student-row {
+        display: grid;
+      }
+
+      .experiment-picker-card {
+        grid-template-columns: 1fr;
+      }
+
+      .experiment-card-art {
+        min-height: 88px;
+      }
+
+      .experiment-start-btn,
+      .experiment-quiz-btn {
+        width: 100%;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *,
       *::before,
