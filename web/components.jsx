@@ -1,168 +1,4 @@
-﻿const { useEffect, useRef, useState } = React;
-
-const LOCAL_AUTH_USERS_KEY = "nawa-local-users-v1";
-const LOCAL_AUTH_SESSION_KEY = "nawa-local-session-v1";
-const LOCAL_TEACHER_ACCESS_CODE = "NAWA-TEACHER-2026";
-
-const LOCAL_TEACHER_DASHBOARD = {
-  summary: [
-    { value: "26", title: "Active students", text: "Students who opened a lab or completed an activity in the last 24 hours." },
-    { value: "7", title: "Labs in progress", text: "Experiments that still need a follow-up discussion in class." },
-    { value: "88%", title: "Average completion", text: "Average progress across the current class sections." }
-  ],
-  students: [
-    { id: "ST-201", name: "Laith Al-Ajarmeh", grade: "Grade 9", section: "9-A", experiment: "Electromagnetic induction", progress: 92, quizScore: 9, lastActive: "12 minutes ago", status: "Complete" },
-    { id: "ST-202", name: "Saja Al-Khawaldeh", grade: "Grade 9", section: "9-A", experiment: "Galvanic cell", progress: 74, quizScore: 7, lastActive: "25 minutes ago", status: "In progress" },
-    { id: "ST-203", name: "Mohammad Al-Shawabkeh", grade: "Grade 10", section: "10-B", experiment: "DNA replication", progress: 58, quizScore: 6, lastActive: "40 minutes ago", status: "Needs support" },
-    { id: "ST-204", name: "Tala Nassar", grade: "Grade 10", section: "10-B", experiment: "Linear momentum", progress: 84, quizScore: 8, lastActive: "1 hour ago", status: "Complete" },
-    { id: "ST-205", name: "Adam Al-Zoubi", grade: "Grade 8", section: "8-C", experiment: "Electromagnetic induction", progress: 37, quizScore: 4, lastActive: "2 hours ago", status: "Needs support" }
-  ]
-};
-
-const readLocalUsers = () => {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(LOCAL_AUTH_USERS_KEY);
-    const users = raw ? JSON.parse(raw) : [];
-    return Array.isArray(users) ? users : [];
-  } catch (error) {
-    return [];
-  }
-};
-
-const writeLocalUsers = (users) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(LOCAL_AUTH_USERS_KEY, JSON.stringify(users));
-};
-
-const saveLocalSession = (session) => {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(LOCAL_AUTH_SESSION_KEY, JSON.stringify(session));
-};
-
-const loadLocalSession = () => {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(LOCAL_AUTH_SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (error) {
-    return null;
-  }
-};
-
-const createLocalProfile = (user) => ({
-  id: user.id,
-  name: user.name,
-  email: user.email,
-  role: user.role
-});
-
-const hashBrowserPassword = async (password) => {
-  if (typeof window === "undefined" || !window.crypto?.subtle) {
-    return btoa(unescape(encodeURIComponent(password)));
-  }
-  const encoded = new TextEncoder().encode(password);
-  const buffer = await window.crypto.subtle.digest("SHA-256", encoded);
-  return Array.from(new Uint8Array(buffer)).map((value) => value.toString(16).padStart(2, "0")).join("");
-};
-
-const shouldUseLocalAuth = () => {
-  if (typeof window === "undefined") return false;
-  const host = window.location.hostname;
-  return host !== "127.0.0.1" && host !== "localhost";
-};
-
-const localPlatform = {
-  shouldUseLocalAuth,
-  loadSession: loadLocalSession,
-  clearSession() {
-    if (typeof window === "undefined") return;
-    window.localStorage.removeItem(LOCAL_AUTH_SESSION_KEY);
-  },
-  async register({ name, email, password, role, teacherAccessCode }) {
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-    if (!name || !normalizedEmail || !password) {
-      throw new Error("Complete your name, email, and password to create an account.");
-    }
-    if (password.length < 8) {
-      throw new Error("Password must be at least 8 characters long.");
-    }
-    if (role === "teacher" && String(teacherAccessCode || "").trim() !== LOCAL_TEACHER_ACCESS_CODE) {
-      throw new Error("Teacher accounts require a valid access code.");
-    }
-
-    const users = readLocalUsers();
-    if (users.some((user) => user.email === normalizedEmail)) {
-      throw new Error("This email is already registered. Sign in instead.");
-    }
-
-    const user = {
-      id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: String(name).trim(),
-      email: normalizedEmail,
-      role,
-      passwordHash: await hashBrowserPassword(password)
-    };
-    users.push(user);
-    writeLocalUsers(users);
-
-    const session = {
-      token: `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      profile: createLocalProfile(user)
-    };
-    saveLocalSession(session);
-    return session;
-  },
-  async login({ email, password, role }) {
-    const normalizedEmail = String(email || "").trim().toLowerCase();
-    const users = readLocalUsers();
-    const user = users.find((item) => item.email === normalizedEmail && item.role === role);
-    if (!user) {
-      throw new Error("This account was not found for the selected role.");
-    }
-
-    const passwordHash = await hashBrowserPassword(password);
-    if (user.passwordHash !== passwordHash) {
-      throw new Error("Incorrect password. Try again.");
-    }
-
-    const session = {
-      token: `local-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
-      profile: createLocalProfile(user)
-    };
-    saveLocalSession(session);
-    return session;
-  },
-  getTeacherDashboard(profile, { query = "", sort = "progress" } = {}) {
-    const dataset = {
-      teacherName: profile?.name || "Teacher",
-      summary: LOCAL_TEACHER_DASHBOARD.summary,
-      students: [...LOCAL_TEACHER_DASHBOARD.students]
-    };
-    const normalizedQuery = String(query || "").trim().toLowerCase();
-    let students = dataset.students;
-    if (normalizedQuery) {
-      students = students.filter((student) =>
-        [student.name, student.grade, student.section, student.experiment, student.status]
-          .some((value) => String(value).toLowerCase().includes(normalizedQuery))
-      );
-    }
-    const sorters = {
-      progress: (a, b) => b.progress - a.progress,
-      score: (a, b) => b.quizScore - a.quizScore,
-      name: (a, b) => a.name.localeCompare(b.name, "en"),
-      recent: (a, b) => a.id.localeCompare(b.id, "en")
-    };
-    students.sort(sorters[sort] || sorters.progress);
-    return {
-      teacherName: dataset.teacherName,
-      summary: dataset.summary,
-      students
-    };
-  }
-};
-
-window.NawaLocalPlatform = localPlatform;
+const { useEffect, useState } = React;
 
 const Counter = ({ target, suffix = "", duration = 1600 }) => {
   const [count, setCount] = useState(0);
@@ -361,10 +197,6 @@ const HeroSection = ({ c, rotation }) => {
   return (
     <main id="home" className="hero hero-nucleus">
       <div className="hero-copy">
-        <div className="eyebrow">
-          <span className="eyebrow-dot" aria-hidden="true"></span>
-          <span>{c.eyebrow}</span>
-        </div>
         <h1>
           {hasCustomHeroLines ? (
             <>
@@ -389,7 +221,7 @@ const HeroSection = ({ c, rotation }) => {
         <ul className="hero-tag-row" aria-label={c.heroTagsLabel || "Highlights"}>
           {heroTags.map((tag) => (
             <li className="hero-tag" key={tag}>
-              <span className="hero-tag-icon" aria-hidden="true">âœ“</span>
+              <span className="hero-tag-icon" aria-hidden="true">✓</span>
               <span>{tag}</span>
             </li>
           ))}
@@ -471,6 +303,68 @@ const ExperimentScene = ({ stageRef, dragging, setDragging, handleStagePointer, 
   </div>
 );
 
+const clampValue = (value, min, max) => Math.min(max, Math.max(min, value));
+
+const calculateCollisionOutcome = ({ massA, massB, velocityA, velocityB, collisionType }) => {
+  const totalMomentumBefore = massA * velocityA + massB * velocityB;
+  const totalEnergyBefore = 0.5 * massA * velocityA * velocityA + 0.5 * massB * velocityB * velocityB;
+  const canCollide = velocityA > velocityB;
+  const restitution = collisionType === "elastic" ? 1 : 0;
+  const sharedVelocity = totalMomentumBefore / (massA + massB);
+
+  let finalVelocityA = velocityA;
+  let finalVelocityB = velocityB;
+
+  if (canCollide) {
+    finalVelocityA = ((massA * velocityA) + (massB * velocityB) - massB * restitution * (velocityA - velocityB)) / (massA + massB);
+    finalVelocityB = ((massA * velocityA) + (massB * velocityB) + massA * restitution * (velocityA - velocityB)) / (massA + massB);
+  }
+
+  const totalMomentumAfter = massA * finalVelocityA + massB * finalVelocityB;
+  const totalEnergyAfter = 0.5 * massA * finalVelocityA * finalVelocityA + 0.5 * massB * finalVelocityB * finalVelocityB;
+
+  return {
+    canCollide,
+    sharedVelocity,
+    finalVelocityA,
+    finalVelocityB,
+    totalMomentumBefore,
+    totalMomentumAfter,
+    totalEnergyBefore,
+    totalEnergyAfter,
+    momentumGap: Math.abs(totalMomentumBefore - totalMomentumAfter),
+    energyLoss: Math.max(0, totalEnergyBefore - totalEnergyAfter)
+  };
+};
+
+class ExperimentErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error) {
+    console.error(error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="material-placeholder">
+          <strong>{this.props.title}</strong>
+          <p>{this.props.message}</p>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const PhysicsCollisionSimulation = ({ c }) => {
   const massOptions = [0.5, 1, 1.5, 2, 2.5, 3];
   const velocityOptions = [-4, -2, 0, 2, 4];
@@ -487,6 +381,10 @@ const PhysicsCollisionSimulation = ({ c }) => {
     progress: 0
   });
   const [selectedQuestion, setSelectedQuestion] = useState(0);
+  const collisionOutcome = calculateCollisionOutcome(config);
+  const impact = config.progress / 100;
+  const approach = Math.min(1, impact / 0.5);
+  const settle = Math.max(0, (impact - 0.5) / 0.5);
 
   useEffect(() => {
     if (!config.running) return undefined;
@@ -512,37 +410,59 @@ const PhysicsCollisionSimulation = ({ c }) => {
     progress: 0
   });
 
-  const totalMomentumBefore = config.massA * config.velocityA + config.massB * config.velocityB;
-  const totalEnergyBefore = 0.5 * config.massA * config.velocityA * config.velocityA + 0.5 * config.massB * config.velocityB * config.velocityB;
-  const finalElasticA = ((config.massA - config.massB) / (config.massA + config.massB)) * config.velocityA + ((2 * config.massB) / (config.massA + config.massB)) * config.velocityB;
-  const finalElasticB = ((2 * config.massA) / (config.massA + config.massB)) * config.velocityA + ((config.massB - config.massA) / (config.massA + config.massB)) * config.velocityB;
-  const finalShared = totalMomentumBefore / (config.massA + config.massB);
-  const finalVelocityA = config.collisionType === "elastic" ? finalElasticA : finalShared;
-  const finalVelocityB = config.collisionType === "elastic" ? finalElasticB : finalShared;
-  const totalMomentumAfter = config.massA * finalVelocityA + config.massB * finalVelocityB;
-  const totalEnergyAfter = 0.5 * config.massA * finalVelocityA * finalVelocityA + 0.5 * config.massB * finalVelocityB * finalVelocityB;
-  const momentumGap = Math.abs(totalMomentumBefore - totalMomentumAfter);
-  const energyLoss = Math.max(0, totalEnergyBefore - totalEnergyAfter);
-  const impact = config.progress / 100;
-  const approach = Math.min(1, impact / 0.48);
-  const settle = Math.max(0, (impact - 0.48) / 0.52);
-  const cartAX = impact < 0.5 ? 12 + approach * 28 : 40 - settle * (config.collisionType === "elastic" ? 12 : 6);
-  const cartBX = impact < 0.5 ? 76 - approach * 28 : (config.collisionType === "elastic" ? 60 + settle * 16 : 53 + settle * 8);
-  const statusText = config.collisionType === "elastic" ? (isArabic ? "Ù…Ø±Ù†" : "Elastic") : (isArabic ? "ØºÙŠØ± Ù…Ø±Ù†" : "Inelastic");
-  const stageTitle = config.collisionType === "elastic"
-    ? (isArabic ? "ØªØµØ§Ø¯Ù… Ù…Ø±Ù†" : "Elastic collision")
-    : (isArabic ? "ØªØµØ§Ø¯Ù… ØºÙŠØ± Ù…Ø±Ù†" : "Inelastic collision");
-  const stageHint = config.collisionType === "elastic"
-    ? c.physicsCollisionHint
-    : c.physicsCollisionCoach;
+  const totalMomentumBefore = collisionOutcome.totalMomentumBefore;
+  const totalEnergyBefore = collisionOutcome.totalEnergyBefore;
+  const finalVelocityA = collisionOutcome.finalVelocityA;
+  const finalVelocityB = collisionOutcome.finalVelocityB;
+  const totalMomentumAfter = collisionOutcome.totalMomentumAfter;
+  const totalEnergyAfter = collisionOutcome.totalEnergyAfter;
+  const momentumGap = collisionOutcome.momentumGap;
+  const energyLoss = collisionOutcome.energyLoss;
+  const maxSpeed = Math.max(1, Math.abs(config.velocityA), Math.abs(config.velocityB), Math.abs(finalVelocityA), Math.abs(finalVelocityB));
+  const travelScale = 9 / maxSpeed;
+  const leftStart = 16;
+  const rightStart = 84;
+  const leftContact = 44;
+  const rightContact = 56;
+  const cartHalfGap = 5;
+
+  const cartAX = !collisionOutcome.canCollide
+    ? clampValue(leftStart + (config.velocityA * travelScale * impact), leftStart, rightContact - cartHalfGap)
+    : impact < 0.5
+      ? clampValue(leftStart + ((leftContact - leftStart) * approach), leftStart, leftContact - cartHalfGap)
+      : config.collisionType === "elastic"
+        ? clampValue(leftContact + (finalVelocityA * travelScale * settle), leftStart, rightContact - cartHalfGap)
+        : clampValue(leftContact + (collisionOutcome.sharedVelocity * travelScale * settle), leftStart, rightContact - 8);
+  const cartBX = !collisionOutcome.canCollide
+    ? clampValue(rightStart + (config.velocityB * travelScale * impact), leftContact + cartHalfGap, rightStart)
+    : impact < 0.5
+      ? clampValue(rightStart - ((rightStart - rightContact) * approach), rightContact + cartHalfGap, rightStart)
+      : config.collisionType === "elastic"
+        ? clampValue(rightContact + (finalVelocityB * travelScale * settle), leftContact + cartHalfGap, rightStart)
+        : clampValue(rightContact + (collisionOutcome.sharedVelocity * travelScale * settle), leftContact + 8, rightStart);
+  const statusText = !collisionOutcome.canCollide
+    ? (isArabic ? "لا يحدث تصادم" : "No collision")
+    : config.collisionType === "elastic"
+      ? (isArabic ? "مرن" : "Elastic")
+      : (isArabic ? "غير مرن" : "Inelastic");
+  const stageTitle = !collisionOutcome.canCollide
+    ? (isArabic ? "لا يحدث تصادم" : "No collision")
+    : config.collisionType === "elastic"
+    ? (isArabic ? "تصادم مرن" : "Elastic collision")
+    : (isArabic ? "تصادم غير مرن" : "Inelastic collision");
+  const stageHint = !collisionOutcome.canCollide
+    ? (c.physicsCollisionNoImpact || (isArabic ? "هذه السرعات لا تؤدي إلى تصادم، لذلك تبقى الحركة كما هي." : "These velocities do not produce a collision, so the carts keep their motion."))
+    : config.collisionType === "elastic"
+      ? c.physicsCollisionHint
+      : c.physicsCollisionCoach;
   const metricLabels = isArabic
     ? {
-        momentumBefore: "Ø§Ù„Ø²Ø®Ù… Ù‚Ø¨Ù„",
-        momentumAfter: "Ø§Ù„Ø²Ø®Ù… Ø¨Ø¹Ø¯",
-        energyBefore: "Ø§Ù„Ø·Ø§Ù‚Ø© Ø§Ù„Ø­Ø±ÙƒÙŠØ© Ù‚Ø¨Ù„",
-        energyAfter: "Ø§Ù„Ø·Ø§Ù‚Ø© Ø§Ù„Ø­Ø±ÙƒÙŠØ© Ø¨Ø¹Ø¯",
-        energyLost: "Ø§Ù„Ø·Ø§Ù‚Ø© Ø§Ù„Ù…ÙÙ‚ÙˆØ¯Ø©",
-        momentumGap: "ÙØ±Ù‚ Ø§Ù„Ø²Ø®Ù…"
+        momentumBefore: "الزخم قبل",
+        momentumAfter: "الزخم بعد",
+        energyBefore: "الطاقة الحركية قبل",
+        energyAfter: "الطاقة الحركية بعد",
+        energyLost: "الطاقة المفقودة",
+        momentumGap: "فرق الزخم"
       }
     : {
         momentumBefore: "Momentum before",
@@ -553,11 +473,11 @@ const PhysicsCollisionSimulation = ({ c }) => {
         momentumGap: "Momentum gap"
       };
   const controlLabels = isArabic
-    ? { massA: "Ø§Ù„ÙƒØªÙ„Ø© Ø£", massB: "Ø§Ù„ÙƒØªÙ„Ø© Ø¨", velocityA: "Ø§Ù„Ø³Ø±Ø¹Ø© Ø£", velocityB: "Ø§Ù„Ø³Ø±Ø¹Ø© Ø¨" }
+    ? { massA: "الكتلة أ", massB: "الكتلة ب", velocityA: "السرعة أ", velocityB: "السرعة ب" }
     : { massA: "Mass A", massB: "Mass B", velocityA: "Velocity A", velocityB: "Velocity B" };
-  const cartLabels = isArabic ? { a: "Ø£", b: "Ø¨" } : { a: "A", b: "B" };
-  const massUnit = isArabic ? "ÙƒØº" : "kg";
-  const velocityUnit = isArabic ? "Ù…/Ø«" : "m/s";
+  const cartLabels = isArabic ? { a: "أ", b: "ب" } : { a: "A", b: "B" };
+  const massUnit = isArabic ? "كغ" : "kg";
+  const velocityUnit = isArabic ? "م/ث" : "m/s";
   const questions = c.physicsCollisionQuestions || [];
 
   return (
@@ -593,8 +513,8 @@ const PhysicsCollisionSimulation = ({ c }) => {
             <p>{stageHint}</p>
           </div>
           <div className="collision-stage-actions">
-            <button className="micro-btn" type="button" onClick={() => setConfig((current) => current.running ? { ...current, running: false } : { ...current, running: true, progress: current.progress >= 100 ? 0 : current.progress })}>{config.running ? (isArabic ? "Ø¥ÙŠÙ‚Ø§Ù" : "Pause") : (isArabic ? "Ø§Ø¨Ø¯Ø£ +" : "Start +")}</button>
-            <button className="micro-btn secondary" type="button" onClick={reset}>{isArabic ? "Ø¥Ø¹Ø§Ø¯Ø©" : "Reset"}</button>
+            <button className="micro-btn" type="button" onClick={() => setConfig((current) => current.running ? { ...current, running: false } : { ...current, running: true, progress: current.progress >= 100 ? 0 : current.progress })}>{config.running ? (isArabic ? "إيقاف" : "Pause") : (isArabic ? "ابدأ +" : "Start +")}</button>
+            <button className="micro-btn secondary" type="button" onClick={reset}>{isArabic ? "إعادة" : "Reset"}</button>
           </div>
         </div>
         <div className="collision-track">
@@ -607,10 +527,10 @@ const PhysicsCollisionSimulation = ({ c }) => {
             <span>{cartLabels.b}</span>
             <strong>{config.massB.toFixed(1)} {massUnit}</strong>
           </div>
-          <div className="collision-arrow arrow-a" style={{ left: `${Math.max(12, cartAX - 5)}%`, opacity: impact < 0.55 ? 1 : 0.55 }}>{config.velocityA >= 0 ? "â†’" : "â†"}</div>
-          <div className="collision-arrow arrow-b" style={{ left: `${Math.min(84, cartBX + 2)}%`, opacity: impact < 0.55 ? 1 : 0.55 }}>{config.velocityB >= 0 ? "â†’" : "â†"}</div>
+          <div className="collision-arrow arrow-a" style={{ left: `${Math.max(12, cartAX - 5)}%`, opacity: impact < 0.55 ? 1 : 0.55 }}>{config.velocityA >= 0 ? "→" : "←"}</div>
+          <div className="collision-arrow arrow-b" style={{ left: `${Math.min(84, cartBX + 2)}%`, opacity: impact < 0.55 ? 1 : 0.55 }}>{config.velocityB >= 0 ? "→" : "←"}</div>
           <div className="collision-readout">
-            <strong>{config.progress < 48 ? (isArabic ? "Ù‚Ø¨Ù„ Ø§Ù„ØªØµØ§Ø¯Ù…" : "Before impact") : config.collisionType === "elastic" ? (isArabic ? "Ø¨Ø¹Ø¯ Ø§Ù„Ø§Ø±ØªØ¯Ø§Ø¯" : "After bounce") : (isArabic ? "Ø­Ø±ÙƒØ© Ù…Ø´ØªØ±ÙƒØ©" : "Joined motion")}</strong>
+            <strong>{!collisionOutcome.canCollide ? (isArabic ? "لا تصادم" : "No collision") : config.progress < 48 ? (isArabic ? "قبل التصادم" : "Before impact") : config.collisionType === "elastic" ? (isArabic ? "بعد الارتداد" : "After bounce") : (isArabic ? "حركة مشتركة" : "Joined motion")}</strong>
             <span>{c.physicsCollisionSummary}</span>
           </div>
         </div>
@@ -619,7 +539,7 @@ const PhysicsCollisionSimulation = ({ c }) => {
       <aside className="collision-controls card-lite">
         <div className="collision-panel-head">
           <strong>{c.physicsCollisionCoach}</strong>
-          <span className="lab-tag">{isArabic ? "Ø§Ù„Ø²Ø®Ù…" : "Momentum"}</span>
+          <span className="lab-tag">{isArabic ? "الزخم" : "Momentum"}</span>
         </div>
         <div className="collision-control">
           <label><span>{controlLabels.massA}</span><strong>{config.massA.toFixed(1)} {massUnit}</strong></label>
@@ -682,11 +602,11 @@ const PhysicsCollisionSimulation = ({ c }) => {
           </div>
         </div>
         <div className="collision-toggle">
-          <button className={`micro-btn ${config.collisionType === "elastic" ? "" : "secondary"}`} type="button" onClick={() => setValue("collisionType", "elastic")}>{isArabic ? "Ù…Ø±Ù†" : "Elastic"}</button>
-          <button className={`micro-btn ${config.collisionType === "inelastic" ? "" : "secondary"}`} type="button" onClick={() => setValue("collisionType", "inelastic")}>{isArabic ? "ØºÙŠØ± Ù…Ø±Ù†" : "Inelastic"}</button>
+          <button className={`micro-btn ${config.collisionType === "elastic" ? "" : "secondary"}`} type="button" onClick={() => setValue("collisionType", "elastic")}>{isArabic ? "مرن" : "Elastic"}</button>
+          <button className={`micro-btn ${config.collisionType === "inelastic" ? "" : "secondary"}`} type="button" onClick={() => setValue("collisionType", "inelastic")}>{isArabic ? "غير مرن" : "Inelastic"}</button>
         </div>
         <div className="collision-control">
-          <label><span>{isArabic ? "Ø³Ø±Ø¹Ø© Ø§Ù„Ø²Ù…Ù†" : "Time speed"}</span><strong>{config.speed}x</strong></label>
+          <label><span>{isArabic ? "سرعة الزمن" : "Time speed"}</span><strong>{config.speed}x</strong></label>
           <div className="speed-switcher">
             {[1, 2, 4].map((speed) => <button key={speed} className={`micro-btn ${config.speed === speed ? "" : "secondary"}`} type="button" onClick={() => setValue("speed", speed)}>{speed}x</button>)}
           </div>
@@ -750,7 +670,7 @@ const BiologySimulation = ({ c, currentMaterial, bioSettings, setBioSettings, bi
         </div>
         <div className="bio-slider-grid">
           <label className="bio-slider">
-            <span>{c.bioTempLabel}<strong>{bioSettings.temperature}Â°C</strong></span>
+            <span>{c.bioTempLabel}<strong>{bioSettings.temperature}°C</strong></span>
             <input type="range" min="10" max="45" value={bioSettings.temperature} onChange={(event) => setRange("temperature", event.target.value)} />
           </label>
         </div>
@@ -829,7 +749,7 @@ const BiologySimulation = ({ c, currentMaterial, bioSettings, setBioSettings, bi
               <span>{item.label}</span>
               <strong>{item.value}{item.suffix || ""}</strong>
               <div className="bio-result-meta">
-                <span className={`bio-indicator ${indicator(item.value)}`}>{indicator(item.value) === "up" ? "â†‘" : "â†“"}</span>
+                <span className={`bio-indicator ${indicator(item.value)}`}>{indicator(item.value) === "up" ? "↑" : "↓"}</span>
                 <span className={`bio-status ${statusClass(item.value)}`}>{statusLevel(item.value)}</span>
               </div>
             </div>
@@ -998,8 +918,8 @@ const DNAReplicationSimulation = ({ c, currentMaterial, resetBiologyExperiment }
         </div>
 
         <div className="dna-status-row">
-          <div className="dna-status-card"><span>{c.bioDnaDirection}</span><strong>3' â†’ 5'</strong><em>{c.bioDnaReadDirection}</em></div>
-          <div className="dna-status-card highlight"><span>{c.bioDnaPolymerase}</span><strong>5' â†’ 3'</strong><em>{c.bioDnaBuildDirection}</em></div>
+          <div className="dna-status-card"><span>{c.bioDnaDirection}</span><strong>3' → 5'</strong><em>{c.bioDnaReadDirection}</em></div>
+          <div className="dna-status-card highlight"><span>{c.bioDnaPolymerase}</span><strong>5' → 3'</strong><em>{c.bioDnaBuildDirection}</em></div>
           <div className="dna-status-card"><span>{c.bioDnaSemiconservative}</span><strong>{isComplete ? c.bioDnaConfirmed : c.bioDnaWorking}</strong><em>{c.bioDnaSemiconservativeText}</em></div>
         </div>
 
@@ -1042,7 +962,7 @@ const DNAReplicationSimulation = ({ c, currentMaterial, resetBiologyExperiment }
               {templateSequence.map((base, index) => (
                 <div className="dna-sequence-cell" key={`tpl-${base}-${index}`}>
                   <span className="dna-sequence-tag">{base}</span>
-                  <strong>{placedBases[index] || "â€”"}</strong>
+                  <strong>{placedBases[index] || "—"}</strong>
                 </div>
               ))}
             </div>
@@ -1244,7 +1164,7 @@ const ChemistrySimulationLegacy = ({ c, chemSettings, setChemSettings, chemMetri
   const halfReactionRight = `${chemMetrics.cathodeIon} + 2e- -> ${chemSettings.cathode}(s)`;
   const fullReaction = `${chemSettings.anode}(s) + ${chemMetrics.cathodeIon}(aq) -> ${chemMetrics.anodeIon}(aq) + ${chemSettings.cathode}(s)`;
   const stateLabel = (value) => value === "high" ? c.chemStatusHigh : value === "medium" ? c.chemStatusMedium : c.chemStatusLow;
-  const stateArrow = (value) => value === "high" ? "â†‘" : value === "medium" ? "â†’" : "â†“";
+  const stateArrow = (value) => value === "high" ? "↑" : value === "medium" ? "→" : "↓";
 
   return (
     <div className="chem-lab-v2">
@@ -1326,7 +1246,7 @@ const ChemistrySimulationLegacy = ({ c, chemSettings, setChemSettings, chemMetri
               <div className="chemv2-bridge-label">{chemSettings.saltBridge === "none" ? c.chemNoBridge : chemSettings.saltBridge}</div>
               <div className="chemv2-bridge-ions">
                 <span>{chemSettings.saltBridge === "NaCl" ? "Na+" : "K+"}</span>
-                <span>{chemSettings.saltBridge === "none" ? "Ã—" : chemSettings.saltBridge === "KCl" || chemSettings.saltBridge === "NaCl" ? "Cl-" : "NO3-"}</span>
+                <span>{chemSettings.saltBridge === "none" ? "×" : chemSettings.saltBridge === "KCl" || chemSettings.saltBridge === "NaCl" ? "Cl-" : "NO3-"}</span>
               </div>
             </div>
             <div className="chemv2-beaker right">
@@ -1484,35 +1404,35 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
   }, [reactionActive, chemMetrics.cellReady]);
 
   const electrodes = [
-    { id: "Zn", name: "Zinc", symbol: "Zn", desc: isArabic ? "Ù‚Ø¯Ø±Ø© Ø¹Ø§Ù„ÙŠØ© Ø¹Ù„Ù‰ ÙÙ‚Ø¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†Ø§Øª" : "High electron release ability" },
-    { id: "Cu", name: "Copper", symbol: "Cu", desc: isArabic ? "ÙŠÙ…ÙŠÙ„ Ù„Ø§ÙƒØªØ³Ø§Ø¨ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†Ø§Øª" : "Strong electron gain tendency" },
-    { id: "Mg", name: "Magnesium", symbol: "Mg", desc: isArabic ? "Ù†Ø´Ø§Ø· Ø¹Ø§Ù„Ù Ø¬Ø¯Ù‹Ø§" : "Very high reactivity" },
-    { id: "Fe", name: "Iron", symbol: "Fe", desc: isArabic ? "Ù†Ø´Ø§Ø· Ù…ØªÙˆØ³Ø·" : "Moderate reactivity" },
-    { id: "Ag", name: "Silver", symbol: "Ag", desc: isArabic ? "Ù†Ø´Ø§Ø· Ù…Ù†Ø®ÙØ¶" : "Low reactivity" }
+    { id: "Zn", name: "Zinc", symbol: "Zn", desc: isArabic ? "قدرة عالية على فقد الإلكترونات" : "High electron release ability" },
+    { id: "Cu", name: "Copper", symbol: "Cu", desc: isArabic ? "يميل لاكتساب الإلكترونات" : "Strong electron gain tendency" },
+    { id: "Mg", name: "Magnesium", symbol: "Mg", desc: isArabic ? "نشاط عالٍ جدًا" : "Very high reactivity" },
+    { id: "Fe", name: "Iron", symbol: "Fe", desc: isArabic ? "نشاط متوسط" : "Moderate reactivity" },
+    { id: "Ag", name: "Silver", symbol: "Ag", desc: isArabic ? "نشاط منخفض" : "Low reactivity" }
   ];
   const solutions = ["ZnSO4", "CuSO4", "AgNO3", "MgSO4", "HCl"];
   const bridges = ["KNO3", "KCl", "NaCl"];
   const solutionTone = { ZnSO4: "zinc", CuSO4: "copper", AgNO3: "silver", MgSO4: "magnesium", HCl: "acid" };
   const electrodeStrength = { Mg: 1.22, Zn: 1, Fe: 0.74, Ag: 0.64, Cu: 0.52 };
   const normalizedVoltage = Math.max(0.12, Number(chemMetrics.voltage || 0));
-  const flowLabel = chemMetrics.current >= 10 ? (isArabic ? "Ø¹Ø§Ù„Ù" : "High") : chemMetrics.current >= 6 ? (isArabic ? "Ù…ØªÙˆØ³Ø·" : "Medium") : (isArabic ? "Ù…Ù†Ø®ÙØ¶" : "Low");
-  const statusBadge = chemMetrics.status === "high" ? (isArabic ? "Ù…Ø±ØªÙØ¹" : "High") : chemMetrics.status === "medium" ? (isArabic ? "Ù…ØªÙˆØ³Ø·" : "Medium") : (isArabic ? "Ù…Ù†Ø®ÙØ¶" : "Low");
+  const flowLabel = chemMetrics.current >= 10 ? (isArabic ? "عالٍ" : "High") : chemMetrics.current >= 6 ? (isArabic ? "متوسط" : "Medium") : (isArabic ? "منخفض" : "Low");
+  const statusBadge = chemMetrics.status === "high" ? (isArabic ? "مرتفع" : "High") : chemMetrics.status === "medium" ? (isArabic ? "متوسط" : "Medium") : (isArabic ? "منخفض" : "Low");
   const stageProgress = [
-    { key: "materials", label: isArabic ? "Ø§Ø®ØªÙŠØ§Ø± Ø§Ù„Ù…ÙˆØ§Ø¯" : "Select Materials" },
-    { key: "build", label: isArabic ? "Ø¨Ù†Ø§Ø¡ Ø§Ù„Ø®Ù„ÙŠØ©" : "Build Cell" },
-    { key: "run", label: isArabic ? "ØªØ´ØºÙŠÙ„ Ø§Ù„ØªÙØ§Ø¹Ù„" : "Run Reaction" },
-    { key: "analyze", label: isArabic ? "ØªØ­Ù„ÙŠÙ„ Ø§Ù„Ù†ØªØ§Ø¦Ø¬" : "Analyze Results" }
+    { key: "materials", label: isArabic ? "اختيار المواد" : "Select Materials" },
+    { key: "build", label: isArabic ? "بناء الخلية" : "Build Cell" },
+    { key: "run", label: isArabic ? "تشغيل التفاعل" : "Run Reaction" },
+    { key: "analyze", label: isArabic ? "تحليل النتائج" : "Analyze Results" }
   ];
   const assistantText = chemMetrics.cellReady
     ? (isArabic
-      ? "ÙŠÙÙ‚Ø¯ Ø§Ù„Ø²Ù†Ùƒ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†Ø§Øª Ù„Ø£Ù†Ù‡ Ø£ÙƒØ«Ø± Ù†Ø´Ø§Ø·Ù‹Ø§ØŒ Ø¨ÙŠÙ†Ù…Ø§ ØªÙƒØªØ³Ø¨Ù‡Ø§ Ø£ÙŠÙˆÙ†Ø§Øª Ø§Ù„Ù†Ø­Ø§Ø³ ÙˆØªØªØ­ÙˆÙ„ Ø¥Ù„Ù‰ Ù†Ø­Ø§Ø³ ØµÙ„Ø¨ Ø¹Ù„Ù‰ Ø§Ù„Ù‚Ø·Ø¨."
+      ? "يفقد الزنك الإلكترونات لأنه أكثر نشاطًا، بينما تكتسبها أيونات النحاس وتتحول إلى نحاس صلب على القطب."
       : "Zinc loses electrons because it is more reactive, while copper ions gain them and become solid copper on the electrode.")
     : (isArabic
-      ? "Ø§Ø®ØªØ± Ù‚Ø·Ø¨ÙŠÙ† Ù…Ø®ØªÙ„ÙÙŠÙ†ØŒ Ø£Ø¶Ù Ø§Ù„Ù…Ø­Ø§Ù„ÙŠÙ„ Ø§Ù„Ù…Ù†Ø§Ø³Ø¨Ø©ØŒ Ø«Ù… ØµÙÙ„ Ø§Ù„Ø¬Ø³Ø± Ø§Ù„Ù…Ù„Ø­ÙŠ Ù„Ø¥ÙƒÙ…Ø§Ù„ Ø§Ù„Ø®Ù„ÙŠØ©."
+      ? "اختر قطبين مختلفين، أضف المحاليل المناسبة، ثم صِل الجسر الملحي لإكمال الخلية."
       : "Choose two different electrodes, add matching solutions, then connect the salt bridge to complete the cell.");
   const reactionStatus = chemMetrics.cellReady
-    ? (reactionActive ? (isArabic ? "Ù†Ø§Ø¬Ø­Ø©" : "Successful") : (isArabic ? "Ø¬Ø§Ù‡Ø²Ø© Ù„Ù„ØªØ´ØºÙŠÙ„" : "Ready to run"))
-    : (isArabic ? "ØºÙŠØ± Ù…ÙƒØªÙ…Ù„Ø©" : "Incomplete");
+    ? (reactionActive ? (isArabic ? "ناجحة" : "Successful") : (isArabic ? "جاهزة للتشغيل" : "Ready to run"))
+    : (isArabic ? "غير مكتملة" : "Incomplete");
   const bestCombos = Object.entries(electrodeStrength)
     .flatMap(([anode, av]) => Object.entries(electrodeStrength).filter(([cathode]) => cathode !== anode).map(([cathode, cv]) => ({
       anode,
@@ -1547,7 +1467,7 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
       <div className="chem-galv-nav card-lite">
         <div className="chem-galv-brand">
           <strong>NAWA LAB</strong>
-          <span>{isArabic ? "Ù…Ø®ØªØ¨Ø± Ø§Ù„Ø®Ù„ÙŠØ© Ø§Ù„ØºÙ„ÙØ§Ù†ÙŠØ©" : "Galvanic Cell Laboratory"}</span>
+          <span>{isArabic ? "مختبر الخلية الغلفانية" : "Galvanic Cell Laboratory"}</span>
         </div>
         <div className="chem-galv-steps">
           {stageProgress.map((step, index) => (
@@ -1557,18 +1477,18 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
             </div>
           ))}
         </div>
-        <button className="micro-btn secondary" type="button" onClick={() => { resetChemistryExperiment(); setReactionActive(false); setBuildStep(0); }}>{isArabic ? "Ø¥Ø¹Ø§Ø¯Ø©" : "Reset"}</button>
+        <button className="micro-btn secondary" type="button" onClick={() => { resetChemistryExperiment(); setReactionActive(false); setBuildStep(0); }}>{isArabic ? "إعادة" : "Reset"}</button>
       </div>
 
       <div className="chem-galv-grid">
         <aside className="chem-galv-toolbox card-lite">
           <div className="chem-galv-title">
-            <h4>{isArabic ? "Ø£Ø¯ÙˆØ§Øª Ø§Ù„Ù…Ø®ØªØ¨Ø±" : "Laboratory Toolbox"}</h4>
-            <p>{isArabic ? "Ø§Ø³Ø­Ø¨ Ø§Ù„Ø¹Ù†Ø§ØµØ± Ø¥Ù„Ù‰ Ø§Ù„Ø®Ù„ÙŠØ© Ø£Ùˆ Ø§Ù†Ù‚Ø± Ø¹Ù„ÙŠÙ‡Ø§ Ù„Ø¨Ù†Ø§Ø¡ Ø§Ù„ØªØ¬Ø±Ø¨Ø©." : "Drag elements into the cell or click them to build the experiment."}</p>
+            <h4>{isArabic ? "أدوات المختبر" : "Laboratory Toolbox"}</h4>
+            <p>{isArabic ? "اسحب العناصر إلى الخلية أو انقر عليها لبناء التجربة." : "Drag elements into the cell or click them to build the experiment."}</p>
           </div>
 
           <div className="chem-galv-group">
-            <strong>{isArabic ? "Ø§Ù„Ø£Ù‚Ø·Ø§Ø¨" : "Electrodes"}</strong>
+            <strong>{isArabic ? "الأقطاب" : "Electrodes"}</strong>
             <div className="chem-galv-card-grid">
               {electrodes.map((item) => (
                 <button
@@ -1588,7 +1508,7 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
           </div>
 
           <div className="chem-galv-group">
-            <strong>{isArabic ? "Ø§Ù„Ù…Ø­Ø§Ù„ÙŠÙ„" : "Solutions"}</strong>
+            <strong>{isArabic ? "المحاليل" : "Solutions"}</strong>
             <div className="chem-galv-card-grid bottles">
               {solutions.map((solution) => (
                 <button
@@ -1600,7 +1520,7 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
                   onClick={() => setAndAdvance(activeDropTarget === "electrolyteRight" ? "electrolyteRight" : "electrolyteLeft", solution, 1)}
                 >
                   <span>{solution}</span>
-                  <small>{isArabic ? "Ø²Ø¬Ø§Ø¬Ø© Ù…ØªÙˆÙ‡Ø¬Ø©" : "Glowing bottle"}</small>
+                  <small>{isArabic ? "زجاجة متوهجة" : "Glowing bottle"}</small>
                 </button>
               ))}
             </div>
@@ -1611,19 +1531,19 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
         <main className="chem-galv-stage card-lite">
           <div className="chem-galv-stage-head">
             <div>
-              <h4>{isArabic ? "ÙˆØ±Ø´Ø© Ø§Ù„Ø®Ù„ÙŠØ© Ø§Ù„ØºÙ„ÙØ§Ù†ÙŠØ©" : "Galvanic Cell Workspace"}</h4>
-              <p>{isArabic ? "Ù…Ø®ØªØ¨Ø± Ø±Ù‚Ù…ÙŠ ØªÙØ§Ø¹Ù„ÙŠ ÙŠÙØ¸Ù‡Ø± Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†Ø§Øª ÙˆØ§Ù„Ø£ÙŠÙˆÙ†Ø§Øª ÙˆØ§Ù„Ø§Ø®ØªØ²Ø§Ù„ ÙˆØ§Ù„Ø£ÙƒØ³Ø¯Ø© Ø¨Ø·Ø±ÙŠÙ‚Ø© Ù…Ø±Ø¦ÙŠØ©." : "An immersive digital laboratory that makes electrons, ions, oxidation, and reduction visible."}</p>
+              <h4>{isArabic ? "ورشة الخلية الغلفانية" : "Galvanic Cell Workspace"}</h4>
+              <p>{isArabic ? "مختبر رقمي تفاعلي يُظهر الإلكترونات والأيونات والاختزال والأكسدة بطريقة مرئية." : "An immersive digital laboratory that makes electrons, ions, oxidation, and reduction visible."}</p>
             </div>
             <div className="chem-galv-actions">
               <button className="micro-btn" type="button" onClick={() => { setReactionActive((current) => !current); setBuildStep((current) => Math.max(current, 2)); }}>
-                {reactionActive ? (isArabic ? "Ø¥ÙŠÙ‚Ø§Ù Ø§Ù„ØªÙØ§Ø¹Ù„" : "Pause Reaction") : (isArabic ? "Ø§Ø¨Ø¯Ø£ Ø§Ù„ØªÙØ§Ø¹Ù„" : "Start Reaction")}
+                {reactionActive ? (isArabic ? "إيقاف التفاعل" : "Pause Reaction") : (isArabic ? "ابدأ التفاعل" : "Start Reaction")}
               </button>
             </div>
           </div>
 
           <div className="chem-galv-inline-controls">
             <div className="chem-galv-group compact">
-              <strong>{isArabic ? "Ø§Ù„Ø¬Ø³Ø± Ø§Ù„Ù…Ù„Ø­ÙŠ" : "Salt Bridge"}</strong>
+              <strong>{isArabic ? "الجسر الملحي" : "Salt Bridge"}</strong>
               <div className="chem-galv-card-row">
                 {bridges.map((bridge) => (
                   <button
@@ -1641,7 +1561,7 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
             </div>
 
             <div className="chem-galv-group compact">
-              <strong>{isArabic ? "Ø³Ø±Ø¹Ø© Ø§Ù„Ø²Ù…Ù†" : "Time Speed"}</strong>
+              <strong>{isArabic ? "سرعة الزمن" : "Time Speed"}</strong>
               <div className="bio-speed-actions">
                 {[1, 5, 10].map((speed) => <button key={speed} className={`bio-speed-btn ${chemSettings.timeSpeed === speed ? "active" : ""}`} type="button" onClick={() => setSpeed(speed)}>{speed}x</button>)}
               </div>
@@ -1650,20 +1570,20 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
 
           <div className="chem-galv-scene">
             <div className="chem-galv-status card-lite">
-              <strong>{isArabic ? "Ø­Ø§Ù„Ø© Ø§Ù„ØªÙØ§Ø¹Ù„" : "Reaction Status"}</strong>
+              <strong>{isArabic ? "حالة التفاعل" : "Reaction Status"}</strong>
               <span>{reactionStatus}</span>
               <p>{chemMetrics.feedback}</p>
             </div>
 
             <div className="chem-galv-voltmeter card-lite">
               <strong>{normalizedVoltage.toFixed(2)} V</strong>
-              <span>{isArabic ? "ÙØ±Ù‚ Ø§Ù„Ø¬Ù‡Ø¯" : "Voltage"}</span>
+              <span>{isArabic ? "فرق الجهد" : "Voltage"}</span>
             </div>
 
             <div className="chem-galv-wire">
               <div className={`chem-galv-bulb ${chemMetrics.cellReady && chemSettings.lampOn && reactionActive ? "on" : "off"}`} />
               <div className="chem-galv-electrons">
-                {particles.map((item) => <span key={item} style={{ animationDelay: `${item * 120}ms` }}>eâ»</span>)}
+                {particles.map((item) => <span key={item} style={{ animationDelay: `${item * 120}ms` }}>e⁻</span>)}
               </div>
             </div>
 
@@ -1673,14 +1593,14 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
                 <div className="chem-galv-electrode">{chemSettings.anode}</div>
                 <div className="chem-galv-label">{chemSettings.electrolyteLeft}</div>
                 <div className="chem-galv-reaction">
-                  <strong>{isArabic ? "Ø§Ù„Ø£ÙƒØ³Ø¯Ø©" : "Oxidation"}</strong>
+                  <strong>{isArabic ? "الأكسدة" : "Oxidation"}</strong>
                   <span>{selectedOxidation}</span>
                 </div>
               </div>
 
               <div className={`chem-galv-bridge ${activeDropTarget === "saltBridge" ? "highlight" : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={handleDrop("saltBridge")}>
                 <strong>{chemSettings.saltBridge}</strong>
-                <span>{isArabic ? "Ø­Ø±ÙƒØ© Ø§Ù„Ø£ÙŠÙˆÙ†Ø§Øª" : "Ion movement"}</span>
+                <span>{isArabic ? "حركة الأيونات" : "Ion movement"}</span>
               </div>
 
               <div className={`chem-galv-beaker right ${activeDropTarget === "cathode" || activeDropTarget === "electrolyteRight" ? "highlight" : ""}`} onDragOver={(event) => event.preventDefault()} onDrop={handleDrop("cathode")}>
@@ -1688,14 +1608,14 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
                 <div className="chem-galv-electrode copper">{chemSettings.cathode}</div>
                 <div className="chem-galv-label">{chemSettings.electrolyteRight}</div>
                 <div className="chem-galv-reaction">
-                  <strong>{isArabic ? "Ø§Ù„Ø§Ø®ØªØ²Ø§Ù„" : "Reduction"}</strong>
+                  <strong>{isArabic ? "الاختزال" : "Reduction"}</strong>
                   <span>{selectedReduction}</span>
                 </div>
               </div>
             </div>
 
             <div className="chem-galv-equation card-lite">
-              <strong>{isArabic ? "Ø§Ù„Ù…Ø¹Ø§Ø¯Ù„Ø© Ø§Ù„ÙƒÙ„ÙŠØ©" : "Overall Reaction"}</strong>
+              <strong>{isArabic ? "المعادلة الكلية" : "Overall Reaction"}</strong>
               <span>{overallReaction}</span>
             </div>
           </div>
@@ -1704,14 +1624,14 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
         <aside className="chem-galv-results card-lite">
           <div className="chem-galv-panel">
             <div className="chemv2-panel-head">
-              <strong>{isArabic ? "Ù…Ø§Ø°Ø§ ÙŠØ­Ø¯Ø«ØŸ" : "What's happening?"}</strong>
+              <strong>{isArabic ? "ماذا يحدث؟" : "What's happening?"}</strong>
             </div>
             <p className="chem-galv-assistant">{assistantText}</p>
           </div>
 
           <div className="chem-galv-panel">
             <div className="chemv2-panel-head">
-              <strong>{isArabic ? "ÙˆØ¶Ø¹ Ø§Ù„ØªØ­Ø¯ÙŠ" : "Challenge Mode"}</strong>
+              <strong>{isArabic ? "وضع التحدي" : "Challenge Mode"}</strong>
             </div>
             <div className="chem-galv-ranking">
               {bestCombos.map((item, index) => (
@@ -1722,24 +1642,24 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
                 </div>
               ))}
             </div>
-            <p className="chem-galv-discovery">{isArabic ? "Ø­Ø§ÙˆÙ„ Ø¨Ù†Ø§Ø¡ Ø§Ù„Ø®Ù„ÙŠØ© Ø§Ù„Ø£Ø¹Ù„Ù‰ Ø¬Ù‡Ø¯Ù‹Ø§ Ø¨Ù…Ù‚Ø§Ø±Ù†Ø© Ù†Ø´Ø§Ø· Ø§Ù„Ø£Ù‚Ø·Ø§Ø¨ Ø§Ù„Ù…Ø®ØªÙ„ÙØ©." : "Try building the highest-voltage cell by comparing electrode reactivity."}</p>
+            <p className="chem-galv-discovery">{isArabic ? "حاول بناء الخلية الأعلى جهدًا بمقارنة نشاط الأقطاب المختلفة." : "Try building the highest-voltage cell by comparing electrode reactivity."}</p>
           </div>
 
           <div className="chem-chart-stack">
-            <MiniTrendChart title={isArabic ? "ÙØ±Ù‚ Ø§Ù„Ø¬Ù‡Ø¯ Ù…Ø¹ Ø§Ù„Ø²Ù…Ù†" : "Voltage Over Time"} points={chemTrend} strokeClass="oxygen" valueKey="voltage" />
-            <MiniTrendChart title={isArabic ? "Ø´Ø¯Ø© Ø§Ù„ØªÙŠØ§Ø± Ù…Ø¹ Ø§Ù„Ø²Ù…Ù†" : "Current Over Time"} points={chemTrend} strokeClass="carbon" valueKey="current" />
+            <MiniTrendChart title={isArabic ? "فرق الجهد مع الزمن" : "Voltage Over Time"} points={chemTrend} strokeClass="oxygen" valueKey="voltage" />
+            <MiniTrendChart title={isArabic ? "شدة التيار مع الزمن" : "Current Over Time"} points={chemTrend} strokeClass="carbon" valueKey="current" />
           </div>
 
           <div className="chem-galv-panel">
             <div className="chemv2-panel-head">
-              <strong>{isArabic ? "Ù…Ù„Ø®Øµ Ø§Ù„Ø£Ø¯Ø§Ø¡" : "Cell Performance"}</strong>
+              <strong>{isArabic ? "ملخص الأداء" : "Cell Performance"}</strong>
               <span className={`chem-status-chip ${chemMetrics.status}`}>{statusBadge}</span>
             </div>
             <div className="chem-galv-stat-grid">
-              <div className="chem-galv-stat"><span>{isArabic ? "ÙØ±Ù‚ Ø§Ù„Ø¬Ù‡Ø¯" : "Voltage"}</span><strong>{normalizedVoltage.toFixed(2)} V</strong></div>
-              <div className="chem-galv-stat"><span>{isArabic ? "ØªØ¯ÙÙ‚ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†Ø§Øª" : "Electron Flow"}</span><strong>{flowLabel}</strong></div>
-              <div className="chem-galv-stat"><span>{isArabic ? "Ø­Ø§Ù„Ø© Ø§Ù„ØªÙØ§Ø¹Ù„" : "Reaction Status"}</span><strong>{reactionStatus}</strong></div>
-              <div className="chem-galv-stat"><span>{isArabic ? "Ø§Ù„Ø§ÙƒØªØ´Ø§Ù" : "Discovery"}</span><strong>{isArabic ? "ÙƒÙ„Ù…Ø§ Ø²Ø§Ø¯ ÙØ±Ù‚ Ø§Ù„Ù†Ø´Ø§Ø· Ø²Ø§Ø¯ Ø§Ù„Ø¬Ù‡Ø¯." : "Higher reactivity gap raises voltage."}</strong></div>
+              <div className="chem-galv-stat"><span>{isArabic ? "فرق الجهد" : "Voltage"}</span><strong>{normalizedVoltage.toFixed(2)} V</strong></div>
+              <div className="chem-galv-stat"><span>{isArabic ? "تدفق الإلكترونات" : "Electron Flow"}</span><strong>{flowLabel}</strong></div>
+              <div className="chem-galv-stat"><span>{isArabic ? "حالة التفاعل" : "Reaction Status"}</span><strong>{reactionStatus}</strong></div>
+              <div className="chem-galv-stat"><span>{isArabic ? "الاكتشاف" : "Discovery"}</span><strong>{isArabic ? "كلما زاد فرق النشاط زاد الجهد." : "Higher reactivity gap raises voltage."}</strong></div>
             </div>
           </div>
         </aside>
@@ -1751,39 +1671,38 @@ const ChemistrySimulation = ({ c, chemSettings, setChemSettings, chemMetrics, ch
 const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExperiment }) => {
   const isArabic = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
   const ionPool = useMemo(() => ([
-    { ion: "Cl-", label: "Clâ»", name: isArabic ? "ÙƒÙ„ÙˆØ±ÙŠØ¯" : "Chloride" },
-    { ion: "SO4", label: "SOâ‚„Â²â»", name: isArabic ? "ÙƒØ¨Ø±ÙŠØªØ§Øª" : "Sulfate" },
-    { ion: "CO3", label: "COâ‚ƒÂ²â»", name: isArabic ? "ÙƒØ±Ø¨ÙˆÙ†Ø§Øª" : "Carbonate" },
-    { ion: "Cu", label: "CuÂ²âº", name: isArabic ? "Ù†Ø­Ø§Ø³" : "Copper" },
-    { ion: "Fe2", label: "FeÂ²âº", name: isArabic ? "Ø­Ø¯ÙŠØ¯ Ø«Ù†Ø§Ø¦ÙŠ" : "Iron(II)" },
-    { ion: "Fe3", label: "FeÂ³âº", name: isArabic ? "Ø­Ø¯ÙŠØ¯ Ø«Ù„Ø§Ø«ÙŠ" : "Iron(III)" },
-    { ion: "NH4", label: "NHâ‚„âº", name: isArabic ? "Ø£Ù…ÙˆÙ†ÙŠÙˆÙ…" : "Ammonium" },
-    { ion: "Zn", label: "ZnÂ²âº", name: isArabic ? "Ø²Ù†Ùƒ" : "Zinc" },
-    { ion: "Ca", label: "CaÂ²âº", name: isArabic ? "ÙƒØ§Ù„Ø³ÙŠÙˆÙ…" : "Calcium" }
+    { ion: "Cl-", label: "Cl⁻", name: isArabic ? "كلوريد" : "Chloride" },
+    { ion: "SO4", label: "SO₄²⁻", name: isArabic ? "كبريتات" : "Sulfate" },
+    { ion: "CO3", label: "CO₃²⁻", name: isArabic ? "كربونات" : "Carbonate" },
+    { ion: "Cu", label: "Cu²⁺", name: isArabic ? "نحاس" : "Copper" },
+    { ion: "Fe2", label: "Fe²⁺", name: isArabic ? "حديد ثنائي" : "Iron(II)" },
+    { ion: "Fe3", label: "Fe³⁺", name: isArabic ? "حديد ثلاثي" : "Iron(III)" },
+    { ion: "NH4", label: "NH₄⁺", name: isArabic ? "أمونيوم" : "Ammonium" },
+    { ion: "Zn", label: "Zn²⁺", name: isArabic ? "زنك" : "Zinc" },
+    { ion: "Ca", label: "Ca²⁺", name: isArabic ? "كالسيوم" : "Calcium" }
   ]), [isArabic]);
 
   const reagents = [
-    { id: "AgNO3", label: "AgNOâ‚ƒ", name: isArabic ? "Ù†ØªØ±Ø§Øª Ø§Ù„ÙØ¶Ø©" : "Silver nitrate" },
-    { id: "BaCl2", label: "BaClâ‚‚", name: isArabic ? "ÙƒÙ„ÙˆØ±ÙŠØ¯ Ø§Ù„Ø¨Ø§Ø±ÙŠÙˆÙ…" : "Barium chloride" },
-    { id: "NaOH", label: "NaOH", name: isArabic ? "Ù‡ÙŠØ¯Ø±ÙˆÙƒØ³ÙŠØ¯ Ø§Ù„ØµÙˆØ¯ÙŠÙˆÙ…" : "Sodium hydroxide" },
-    { id: "NH3", label: "NHâ‚ƒ", name: isArabic ? "Ø§Ù„Ø£Ù…ÙˆÙ†ÙŠØ§" : "Ammonia solution" },
-    { id: "HCl", label: "HCl", name: isArabic ? "Ø­Ù…Ø¶ Ù‡ÙŠØ¯Ø±ÙˆÙƒÙ„ÙˆØ±ÙŠÙƒ" : "Hydrochloric acid" },
-    { id: "HNO3", label: "HNOâ‚ƒ", name: isArabic ? "Ø­Ù…Ø¶ Ù†ÙŠØªØ±ÙŠÙƒ Ù…Ø®ÙÙ" : "Dilute nitric acid" }
+    { id: "AgNO3", label: "AgNO₃", name: isArabic ? "نترات الفضة" : "Silver nitrate" },
+    { id: "BaCl2", label: "BaCl₂", name: isArabic ? "كلوريد الباريوم" : "Barium chloride" },
+    { id: "NaOH", label: "NaOH", name: isArabic ? "هيدروكسيد الصوديوم" : "Sodium hydroxide" },
+    { id: "NH3", label: "NH₃", name: isArabic ? "الأمونيا" : "Ammonia solution" },
+    { id: "HCl", label: "HCl", name: isArabic ? "حمض هيدروكلوريك" : "Hydrochloric acid" },
+    { id: "HNO3", label: "HNO₃", name: isArabic ? "حمض نيتريك مخفف" : "Dilute nitric acid" }
   ];
 
   const sampleTypes = ionPool.map((item) => item.ion);
   const [sampleIndex, setSampleIndex] = useState(() => Math.floor(Math.random() * sampleTypes.length));
   const [selectedReagent, setSelectedReagent] = useState("AgNO3");
-  const [useExcess, setUseExcess] = useState(false);
-  const [guidedMode, setGuidedMode] = useState(true);
-  const [teacherMode, setTeacherMode] = useState(true);
+  const useExcess = false;
+  const guidedMode = true;
   const [log, setLog] = useState([]);
   const [confidence, setConfidence] = useState(16);
   const [possible, setPossible] = useState(sampleTypes);
   const [observation, setObservation] = useState({
-    reagent: isArabic ? "Ø§Ø®ØªØ± ÙƒØ§Ø´ÙÙ‹Ø§" : "Choose a reagent",
-    observation: isArabic ? "Ø§Ø¨Ø¯Ø£ Ø§Ù„ØªØ¬Ø±Ø¨Ø© Ù…Ù† Ø§Ù„ÙŠØ³Ø§Ø±." : "Start the test from the shelf.",
-    meaning: isArabic ? "Ø³ÙŠØ¸Ù‡Ø± Ø§Ù„ØªØ­Ù„ÙŠÙ„ Ù‡Ù†Ø§ Ù…Ø¨Ø§Ø´Ø±Ø©." : "The interpretation will appear here."
+    reagent: isArabic ? "اختر كاشفًا" : "Choose a reagent",
+    observation: isArabic ? "ابدأ التجربة من اليسار." : "Start the test from the shelf.",
+    meaning: isArabic ? "سيظهر التحليل هنا مباشرة." : "The interpretation will appear here."
   });
   const [finalIon, setFinalIon] = useState("");
   const [revealed, setRevealed] = useState(false);
@@ -1794,49 +1713,48 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
     const nextIndex = Math.floor(Math.random() * sampleTypes.length);
     setSampleIndex(nextIndex);
     setSelectedReagent("AgNO3");
-    setUseExcess(false);
     setLog([]);
     setConfidence(16);
     setPossible(sampleTypes);
     setFinalIon("");
     setRevealed(false);
     setObservation({
-      reagent: isArabic ? "Ø¹ÙŠÙ†Ø© Ø¬Ø¯ÙŠØ¯Ø©" : "New sample",
-      observation: isArabic ? "Ø§Ø¨Ø¯Ø£ Ø¨ÙƒØ§Ø´Ù ÙˆØ§Ø­Ø¯ ÙˆØ§Ø¶Ø­." : "Start with one clear reagent.",
-      meaning: isArabic ? "Ø³Ø¬Ù‘Ù„ Ø£ÙˆÙ„ Ù…Ù„Ø§Ø­Ø¸Ø© Ø«Ù… ÙˆØ§ØµÙ„ Ø§Ù„Ø§Ø³ØªÙ‚ØµØ§Ø¡." : "Record the first observation, then continue."
+      reagent: isArabic ? "عينة جديدة" : "New sample",
+      observation: isArabic ? "ابدأ بكاشف واحد واضح." : "Start with one clear reagent.",
+      meaning: isArabic ? "سجّل أول ملاحظة ثم واصل الاستقصاء." : "Record the first observation, then continue."
     });
   };
 
   const getReaction = (ion, reagent, excess) => {
     const shared = {
       reagent: reagents.find((item) => item.id === reagent)?.name || reagent,
-      observation: isArabic ? "Ù„Ø§ ØªØºÙŠØ± Ù…Ø±Ø¦ÙŠ" : "No visible change",
-      meaning: isArabic ? "Ù„Ø§ ØªÙˆØ¬Ø¯ Ø¯Ù„Ø§Ù„Ø© Ù‚ÙˆÙŠØ© Ù‡Ù†Ø§." : "No strong clue from this test.",
+      observation: isArabic ? "لا تغير مرئي" : "No visible change",
+      meaning: isArabic ? "لا توجد دلالة قوية هنا." : "No strong clue from this test.",
       nextPossible: null,
       boost: 7,
-      icon: "Â·"
+      icon: "·"
     };
 
     if (reagent === "AgNO3") {
-      if (ion === "Cl-") return { ...shared, observation: c.chemIonWhitePpt || (isArabic ? "Ø±Ø§Ø³Ø¨ Ø£Ø¨ÙŠØ¶" : "White precipitate"), meaning: isArabic ? "ÙŠØ¯Ù„ Ø¹Ù„Ù‰ ÙˆØ¬ÙˆØ¯ Ø£ÙŠÙˆÙ† Ø§Ù„ÙƒÙ„ÙˆØ±ÙŠØ¯." : "This points to chloride ions.", nextPossible: ["Cl-"], boost: 28, icon: "â—‹" };
-      return { ...shared, meaning: isArabic ? "ØºÙŠØ§Ø¨ Ø§Ù„Ø±Ø§Ø³Ø¨ ÙŠØ³ØªØ¨Ø¹Ø¯ Ø§Ù„ÙƒÙ„ÙˆØ±ÙŠØ¯." : "No precipitate suggests chloride is unlikely.", nextPossible: sampleTypes.filter((item) => item !== "Cl-"), boost: 12 };
+      if (ion === "Cl-") return { ...shared, observation: c.chemIonWhitePpt || (isArabic ? "راسب أبيض" : "White precipitate"), meaning: isArabic ? "يدل على وجود أيون الكلوريد." : "This points to chloride ions.", nextPossible: ["Cl-"], boost: 28, icon: "○" };
+      return { ...shared, meaning: isArabic ? "غياب الراسب يستبعد الكلوريد." : "No precipitate suggests chloride is unlikely.", nextPossible: sampleTypes.filter((item) => item !== "Cl-"), boost: 12 };
     }
     if (reagent === "BaCl2") {
-      if (ion === "SO4") return { ...shared, observation: c.chemIonWhitePpt || (isArabic ? "Ø±Ø§Ø³Ø¨ Ø£Ø¨ÙŠØ¶" : "White precipitate"), meaning: isArabic ? "ÙŠØ¯Ù„ Ø¹Ù„Ù‰ ÙˆØ¬ÙˆØ¯ Ø§Ù„ÙƒØ¨Ø±ÙŠØªØ§Øª." : "This indicates sulfate ions.", nextPossible: ["SO4"], boost: 28, icon: "â—‹" };
-      return { ...shared, meaning: isArabic ? "ØºÙŠØ§Ø¨ Ø§Ù„Ø±Ø§Ø³Ø¨ ÙŠØ³ØªØ¨Ø¹Ø¯ Ø§Ù„ÙƒØ¨Ø±ÙŠØªØ§Øª." : "No precipitate suggests sulfate is unlikely.", nextPossible: sampleTypes.filter((item) => item !== "SO4"), boost: 12 };
+      if (ion === "SO4") return { ...shared, observation: c.chemIonWhitePpt || (isArabic ? "راسب أبيض" : "White precipitate"), meaning: isArabic ? "يدل على وجود الكبريتات." : "This indicates sulfate ions.", nextPossible: ["SO4"], boost: 28, icon: "○" };
+      return { ...shared, meaning: isArabic ? "غياب الراسب يستبعد الكبريتات." : "No precipitate suggests sulfate is unlikely.", nextPossible: sampleTypes.filter((item) => item !== "SO4"), boost: 12 };
     }
     if (reagent === "HCl" || reagent === "HNO3") {
-      if (ion === "CO3") return { ...shared, observation: c.chemIonGas || (isArabic ? "ÙÙ‚Ø§Ø¹Ø§Øª ØºØ§Ø²" : "Gas bubbles"), meaning: isArabic ? "Ø§Ù„ØºØ§Ø² ÙŠØ¹Ù†ÙŠ ÙƒØ±Ø¨ÙˆÙ†Ø§Øª." : "Gas bubbles point to carbonate.", nextPossible: ["CO3"], boost: 30, icon: "â—Œ" };
-      return { ...shared, meaning: isArabic ? "Ø¹Ø¯Ù… Ø¸Ù‡ÙˆØ± ÙÙ‚Ø§Ø¹Ø§Øª ÙŠØ³ØªØ¨Ø¹Ø¯ Ø§Ù„ÙƒØ±Ø¨ÙˆÙ†Ø§Øª." : "No bubbling makes carbonate unlikely.", nextPossible: sampleTypes.filter((item) => item !== "CO3"), boost: 12 };
+      if (ion === "CO3") return { ...shared, observation: c.chemIonGas || (isArabic ? "فقاعات غاز" : "Gas bubbles"), meaning: isArabic ? "الغاز يعني كربونات." : "Gas bubbles point to carbonate.", nextPossible: ["CO3"], boost: 30, icon: "◌" };
+      return { ...shared, meaning: isArabic ? "عدم ظهور فقاعات يستبعد الكربونات." : "No bubbling makes carbonate unlikely.", nextPossible: sampleTypes.filter((item) => item !== "CO3"), boost: 12 };
     }
     if (reagent === "NaOH" || reagent === "NH3") {
-      if (ion === "Cu") return { ...shared, observation: c.chemIonBluePpt || (isArabic ? "Ø±Ø§Ø³Ø¨ Ø£Ø²Ø±Ù‚" : "Blue precipitate"), meaning: isArabic ? "Ù‡Ø°Ø§ ÙŠØ´ÙŠØ± Ø¥Ù„Ù‰ Ø§Ù„Ù†Ø­Ø§Ø³ Ø§Ù„Ø«Ù†Ø§Ø¦ÙŠ." : "This suggests copper(II).", nextPossible: ["Cu"], boost: 30, icon: "â—‰" };
-      if (ion === "Fe2") return { ...shared, observation: c.chemIonGreenPpt || (isArabic ? "Ø±Ø§Ø³Ø¨ Ø£Ø®Ø¶Ø±" : "Green precipitate"), meaning: isArabic ? "Ù‡Ø°Ø§ ÙŠØ´ÙŠØ± Ø¥Ù„Ù‰ Ø§Ù„Ø­Ø¯ÙŠØ¯ Ø§Ù„Ø«Ù†Ø§Ø¦ÙŠ." : "This suggests iron(II).", nextPossible: ["Fe2"], boost: 30, icon: "â—‰" };
-      if (ion === "Fe3") return { ...shared, observation: c.chemIonBrownPpt || (isArabic ? "Ø±Ø§Ø³Ø¨ Ø¨Ù†ÙŠ" : "Brown precipitate"), meaning: isArabic ? "Ù‡Ø°Ø§ ÙŠØ´ÙŠØ± Ø¥Ù„Ù‰ Ø§Ù„Ø­Ø¯ÙŠØ¯ Ø§Ù„Ø«Ù„Ø§Ø«ÙŠ." : "This suggests iron(III).", nextPossible: ["Fe3"], boost: 30, icon: "â—‰" };
-      if (ion === "NH4") return { ...shared, observation: c.chemIonGas || (isArabic ? "ØºØ§Ø² Ø§Ù„Ø£Ù…ÙˆÙ†ÙŠØ§" : "Ammonia gas"), meaning: isArabic ? "Ø§Ù„Ø£Ù…ÙˆÙ†ÙŠØ§ ØªØ¹Ù†ÙŠ Ø£Ù…ÙˆÙ†ÙŠÙˆÙ…." : "Ammonia gas points to ammonium.", nextPossible: ["NH4"], boost: 30, icon: "â—Œ" };
-      if (ion === "Zn") return { ...shared, observation: useExcess ? (c.chemIonDissolves || (isArabic ? "ÙŠØ°ÙˆØ¨ Ø§Ù„Ø±Ø§Ø³Ø¨ ÙÙŠ Ø§Ù„ÙØ§Ø¦Ø¶" : "Precipitate dissolves in excess")) : (c.chemIonWhitePpt || (isArabic ? "Ø±Ø§Ø³Ø¨ Ø£Ø¨ÙŠØ¶" : "White precipitate")), meaning: isArabic ? "Ø§Ù„Ø²Ù†Ùƒ ÙŠØ¸Ù‡Ø± Ø±Ø§Ø³Ø¨Ù‹Ø§ Ø£Ø¨ÙŠØ¶ ÙˆÙŠØ°ÙˆØ¨ ÙÙŠ Ø§Ù„ÙØ§Ø¦Ø¶." : "Zinc gives a white precipitate that dissolves in excess.", nextPossible: ["Zn"], boost: 32, icon: useExcess ? "â—Œ" : "â—‹" };
-      if (ion === "Ca") return { ...shared, observation: c.chemIonWhitePpt || (isArabic ? "Ø±Ø§Ø³Ø¨ Ø£Ø¨ÙŠØ¶" : "White precipitate"), meaning: isArabic ? "Ø¨Ù‚Ø§Ø¡ Ø§Ù„Ø±Ø§Ø³Ø¨ ÙŠÙˆØ­ÙŠ Ø¨Ø§Ù„ÙƒØ§Ù„Ø³ÙŠÙˆÙ…." : "A remaining white precipitate suggests calcium.", nextPossible: ["Ca"], boost: 22, icon: "â—‹" };
-      return { ...shared, meaning: isArabic ? "Ù‡Ø°Ø§ Ø§Ù„ÙƒØ§Ø´Ù ÙŠØ³ØªØ¨Ø¹Ø¯ Ø¨Ø¹Ø¶ Ø§Ù„Ø£ÙŠÙˆÙ†Ø§Øª Ø§Ù„Ù…ÙˆØ¬Ø¨Ø©." : "This reagent helps exclude some cations.", nextPossible: sampleTypes.filter((item) => !["Cu", "Fe2", "Fe3", "NH4", "Zn", "Ca"].includes(item)), boost: 10 };
+      if (ion === "Cu") return { ...shared, observation: c.chemIonBluePpt || (isArabic ? "راسب أزرق" : "Blue precipitate"), meaning: isArabic ? "هذا يشير إلى النحاس الثنائي." : "This suggests copper(II).", nextPossible: ["Cu"], boost: 30, icon: "◉" };
+      if (ion === "Fe2") return { ...shared, observation: c.chemIonGreenPpt || (isArabic ? "راسب أخضر" : "Green precipitate"), meaning: isArabic ? "هذا يشير إلى الحديد الثنائي." : "This suggests iron(II).", nextPossible: ["Fe2"], boost: 30, icon: "◉" };
+      if (ion === "Fe3") return { ...shared, observation: c.chemIonBrownPpt || (isArabic ? "راسب بني" : "Brown precipitate"), meaning: isArabic ? "هذا يشير إلى الحديد الثلاثي." : "This suggests iron(III).", nextPossible: ["Fe3"], boost: 30, icon: "◉" };
+      if (ion === "NH4") return { ...shared, observation: c.chemIonGas || (isArabic ? "غاز الأمونيا" : "Ammonia gas"), meaning: isArabic ? "الأمونيا تعني أمونيوم." : "Ammonia gas points to ammonium.", nextPossible: ["NH4"], boost: 30, icon: "◌" };
+      if (ion === "Zn") return { ...shared, observation: useExcess ? (c.chemIonDissolves || (isArabic ? "يذوب الراسب في الفائض" : "Precipitate dissolves in excess")) : (c.chemIonWhitePpt || (isArabic ? "راسب أبيض" : "White precipitate")), meaning: isArabic ? "الزنك يظهر راسبًا أبيض ويذوب في الفائض." : "Zinc gives a white precipitate that dissolves in excess.", nextPossible: ["Zn"], boost: 32, icon: useExcess ? "◌" : "○" };
+      if (ion === "Ca") return { ...shared, observation: c.chemIonWhitePpt || (isArabic ? "راسب أبيض" : "White precipitate"), meaning: isArabic ? "بقاء الراسب يوحي بالكالسيوم." : "A remaining white precipitate suggests calcium.", nextPossible: ["Ca"], boost: 22, icon: "○" };
+      return { ...shared, meaning: isArabic ? "هذا الكاشف يستبعد بعض الأيونات الموجبة." : "This reagent helps exclude some cations.", nextPossible: sampleTypes.filter((item) => !["Cu", "Fe2", "Fe3", "NH4", "Zn", "Ca"].includes(item)), boost: 10 };
     }
 
     return shared;
@@ -1865,7 +1783,7 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
       setPossible((current) => current);
     }
     if (guidedMode && log.length === 0) {
-      setObservation((current) => ({ ...current, meaning: current.meaning || (isArabic ? "Ø³Ø¬Ù„ Ø§Ù„Ù…Ù„Ø§Ø­Ø¸Ø© Ø§Ù„Ø£ÙˆÙ„Ù‰ Ø«Ù… Ø¬Ø±Ù‘Ø¨ ÙƒØ§Ø´ÙÙ‹Ø§ Ø¢Ø®Ø±." : "Record the first clue, then try another reagent.") }));
+      setObservation((current) => ({ ...current, meaning: current.meaning || (isArabic ? "سجل الملاحظة الأولى ثم جرّب كاشفًا آخر." : "Record the first clue, then try another reagent.") }));
     }
   };
 
@@ -1875,9 +1793,9 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
   const handleFinalAnswer = () => {
     if (!possible.length || confidence < 28) {
       setObservation({
-        reagent: isArabic ? "Ø§Ù„Ø®Ø·ÙˆØ© Ø§Ù„Ø£Ø®ÙŠØ±Ø©" : "Final step",
-        observation: isArabic ? "Ø£Ø¶Ù Ø§Ø®ØªØ¨Ø§Ø±Ù‹Ø§ Ø¥Ø¶Ø§ÙÙŠÙ‹Ø§ Ø£ÙˆÙ„Ù‹Ø§." : "Run one more test first.",
-        meaning: c.chemIonFinalHint || (isArabic ? "Ø§Ø³ØªØ®Ø¯Ù… ÙƒØ§Ø´ÙÙ‹Ø§ Ø¢Ø®Ø± Ù„ØªØ£ÙƒÙŠØ¯ Ø§Ù„Ø£ÙŠÙˆÙ†." : "Use one more reagent to confirm the ion.")
+        reagent: isArabic ? "الخطوة الأخيرة" : "Final step",
+        observation: isArabic ? "أضف اختبارًا إضافيًا أولًا." : "Run one more test first.",
+        meaning: c.chemIonFinalHint || (isArabic ? "استخدم كاشفًا آخر لتأكيد الأيون." : "Use one more reagent to confirm the ion.")
       });
       return;
     }
@@ -1895,13 +1813,13 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
     <div className="chem-ion-lab">
       <aside className="chem-ion-shelf card-lite">
         <div className="chem-panel-head">
-          <strong>{c.chemIonShelfTitle || (isArabic ? "Ø±Ù Ø§Ù„ÙƒÙˆØ§Ø´Ù" : "Reagent Shelf")}</strong>
-          <button className="micro-btn secondary" type="button" onClick={handleReset}>{c.bioReset || (isArabic ? "Ø¥Ø¹Ø§Ø¯Ø©" : "Reset")}</button>
+          <strong>{c.chemIonShelfTitle || (isArabic ? "رف الكواشف" : "Reagent Shelf")}</strong>
+          <button className="micro-btn secondary" type="button" onClick={handleReset}>{c.bioReset || (isArabic ? "إعادة" : "Reset")}</button>
         </div>
         <div className="chem-ion-sample card-lite">
-          <span>{c.chemIonLabName || (isArabic ? "Ø¹ÙŠÙ†Ø© Ù…Ø¬Ù‡ÙˆÙ„Ø© X" : "Unknown Solution X")}</span>
-          <strong>{isArabic ? "Ø¹ÙŠÙ†Ø© Ù…Ø¬Ù‡ÙˆÙ„Ø©" : "Unknown sample"}</strong>
-          <p>{c.chemIonLabText || (isArabic ? "Ø£Ø¶Ù ÙƒØ§Ø´ÙÙ‹Ø§ Ù„ØªØ­Ø¯ÙŠØ¯ Ø§Ù„Ø£ÙŠÙˆÙ†." : "Add reagents to identify the ion.")}</p>
+          <span>{c.chemIonLabName || (isArabic ? "عينة مجهولة X" : "Unknown Solution X")}</span>
+          <strong>{isArabic ? "عينة مجهولة" : "Unknown sample"}</strong>
+          <p>{c.chemIonLabText || (isArabic ? "أضف كاشفًا لتحديد الأيون." : "Add reagents to identify the ion.")}</p>
         </div>
         <div className="chem-ion-reagent-grid">
           {reagents.map((reagent) => (
@@ -1917,25 +1835,20 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
           ))}
         </div>
         <div className="chem-ion-toggle-row">
-          <button type="button" className={`chem-ion-toggle ${guidedMode ? "active" : ""}`} onClick={() => setGuidedMode((current) => !current)}>{c.chemIonGuidedMode || (isArabic ? "Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„Ù…ÙˆØ¬Ù‘Ù‡" : "Guided Mode")}</button>
-          <button type="button" className={`chem-ion-toggle ${teacherMode ? "active" : ""}`} onClick={() => setTeacherMode((current) => !current)}>{c.chemIonTeacherMode || (isArabic ? "ÙˆØ¶Ø¹ Ø§Ù„Ù…Ø¹Ù„Ù…" : "Teacher Mode")}</button>
-        </div>
-        <div className="chem-ion-toggle-row">
-          <button type="button" className={`chem-ion-toggle ${useExcess ? "active" : ""}`} onClick={() => setUseExcess((current) => !current)}>{isArabic ? "ÙØ§Ø¦Ø¶ Ø§Ù„ÙƒØ§Ø´Ù" : "Use excess"}</button>
-          <button type="button" className="micro-btn" onClick={makeSample}>{c.chemIonNewSample || (isArabic ? "Ø¹ÙŠÙ†Ø© Ø¬Ø¯ÙŠØ¯Ø©" : "Try Another Unknown")}</button>
+          <button type="button" className="micro-btn" onClick={makeSample}>{c.chemIonNewSample || (isArabic ? "عينة جديدة" : "Try Another Unknown")}</button>
         </div>
       </aside>
 
       <section className="chem-ion-scene card-lite">
         <div className="chem-ion-head">
           <div>
-            <h3>{c.chemIonLabTitle || (isArabic ? "Ø§Ù„ÙƒÙŠÙ…ÙŠØ§Ø¡ â€¢ ÙƒØ´Ù Ø§Ù„Ø£ÙŠÙˆÙ†Ø§Øª" : "Chemistry â€¢ Ion Detection")}</h3>
-            <p>{c.chemIonTag || (isArabic ? "Ù…Ø­Ø§ÙƒØ§Ø© ØªØ­Ù„ÙŠÙ„ Ø£ÙŠÙˆÙ†Ø§Øª" : "Ion analysis simulation")}</p>
+            <h3>{c.chemIonLabTitle || (isArabic ? "الكيمياء • كشف الأيونات" : "Chemistry • Ion Detection")}</h3>
+            <p>{c.chemIonTag || (isArabic ? "محاكاة تحليل أيونات" : "Ion analysis simulation")}</p>
           </div>
           <div className="chem-ion-stepper">
-            <span>{c.chemIonGuide1 || (isArabic ? "Ø§Ø®ØªØ± ÙƒØ§Ø´ÙÙ‹Ø§" : "Pick a reagent")}</span>
-            <span>{c.chemIonGuide2 || (isArabic ? "Ø´Ø§Ù‡Ø¯ Ø§Ù„ØªÙØ§Ø¹Ù„" : "Watch the reaction")}</span>
-            <span>{c.chemIonGuide3 || (isArabic ? "Ø­Ø¯Ø¯ Ø§Ù„Ø£ÙŠÙˆÙ†" : "Narrow the ion list")}</span>
+            <span>{c.chemIonGuide1 || (isArabic ? "اختر كاشفًا" : "Pick a reagent")}</span>
+            <span>{c.chemIonGuide2 || (isArabic ? "شاهد التفاعل" : "Watch the reaction")}</span>
+            <span>{c.chemIonGuide3 || (isArabic ? "حدد الأيون" : "Narrow the ion list")}</span>
           </div>
         </div>
 
@@ -1944,7 +1857,7 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
             <div className="chem-ion-liquid"></div>
             <div className="chem-ion-sample-mark">{sample.label}</div>
             {selectedReagent ? <div className="chem-ion-drop">{selectedReagent}</div> : null}
-            <div className={`chem-ion-visual ${observation.observation.includes("white") || observation.observation.includes("Ø£Ø¨ÙŠØ¶") ? "white" : observation.observation.includes("blue") || observation.observation.includes("Ø£Ø²Ø±Ù‚") ? "blue" : observation.observation.includes("green") || observation.observation.includes("Ø£Ø®Ø¶Ø±") ? "green" : observation.observation.includes("brown") || observation.observation.includes("Ø¨Ù†ÙŠ") ? "brown" : observation.observation.includes("Gas") || observation.observation.includes("ØºØ§Ø²") ? "gas" : ""}`}></div>
+            <div className={`chem-ion-visual ${observation.observation.includes("white") || observation.observation.includes("أبيض") ? "white" : observation.observation.includes("blue") || observation.observation.includes("أزرق") ? "blue" : observation.observation.includes("green") || observation.observation.includes("أخضر") ? "green" : observation.observation.includes("brown") || observation.observation.includes("بني") ? "brown" : observation.observation.includes("Gas") || observation.observation.includes("غاز") ? "gas" : ""}`}></div>
             <div className="chem-ion-magnifier">
               <strong>{observation.observation}</strong>
               <span>{observation.meaning}</span>
@@ -1952,17 +1865,17 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
           </div>
           <div className="chem-ion-footer">
             <div className="chem-ion-guess">
-              <span>{c.chemIonObservationTitle || (isArabic ? "Ø§Ù„Ù…Ù„Ø§Ø­Ø¸Ø© Ø§Ù„Ø­ÙŠØ©" : "Live Observation")}</span>
+              <span>{c.chemIonObservationTitle || (isArabic ? "الملاحظة الحية" : "Live Observation")}</span>
               <strong>{observation.reagent}</strong>
             </div>
-            <button className="micro-btn" type="button" onClick={applyReagent}>{isArabic ? "Ø£Ø¶Ù Ø§Ù„ÙƒØ§Ø´Ù" : "Add Reagent"}</button>
+            <button className="micro-btn" type="button" onClick={applyReagent}>{isArabic ? "أضف الكاشف" : "Add Reagent"}</button>
           </div>
         </div>
       </section>
 
       <aside className="chem-ion-results card-lite">
         <div className="chem-panel-head">
-          <strong>{c.chemIonObservationTitle || (isArabic ? "Ø§Ù„Ù…Ù„Ø§Ø­Ø¸Ø© Ø§Ù„Ø­ÙŠØ©" : "Live Observation")}</strong>
+          <strong>{c.chemIonObservationTitle || (isArabic ? "الملاحظة الحية" : "Live Observation")}</strong>
           <span className="chem-status-chip medium">{Math.round(confidence)}%</span>
         </div>
         <div className="chem-ion-observation card-lite">
@@ -1971,36 +1884,21 @@ const ChemistryIonDetectionSimulation = ({ c, currentMaterial, resetChemistryExp
           <p>{observation.meaning}</p>
         </div>
         <div className="chem-ion-log">
-          <strong>{c.chemIonLogTitle || (isArabic ? "Ø³Ø¬Ù„ Ø§Ù„Ù…Ù„Ø§Ø­Ø¸Ø§Øª" : "Observation Log")}</strong>
+          <strong>{c.chemIonLogTitle || (isArabic ? "سجل الملاحظات" : "Observation Log")}</strong>
           {log.length ? log.map((entry, index) => (
             <div className="chem-ion-log-row" key={`${entry.reagent}-${index}`}>
               <span>{String(index + 1).padStart(2, "0")}</span>
               <strong>{entry.reagent}</strong>
               <em>{entry.observation}</em>
             </div>
-          )) : <div className="chem-ion-empty">{isArabic ? "Ø§Ø¨Ø¯Ø£ Ø¨Ø£ÙˆÙ„ Ø§Ø®ØªØ¨Ø§Ø±." : "Start with the first test."}</div>}
+          )) : <div className="chem-ion-empty">{isArabic ? "ابدأ بأول اختبار." : "Start with the first test."}</div>}
         </div>
         <div className="chem-ion-chip-wrap">
-          <strong>{c.chemIonPossibleTitle || (isArabic ? "Ø§Ù„Ø£ÙŠÙˆÙ†Ø§Øª Ø§Ù„Ù…Ø­ØªÙ…Ù„Ø©" : "Possible Ions")}</strong>
+          <strong>{c.chemIonPossibleTitle || (isArabic ? "الأيونات المحتملة" : "Possible Ions")}</strong>
           <div className="chem-ion-chip-grid">
             {ionPool.map((item) => (
               <span key={item.ion} className={`chem-ion-chip ${couldBe.includes(item.ion) ? "active" : ""}`}>{item.label}</span>
             ))}
-          </div>
-        </div>
-        <div className="chem-ion-confidence">
-          <div className="chem-panel-head">
-            <strong>{c.chemIonConfidenceTitle || (isArabic ? "Ù…Ø³ØªÙˆÙ‰ Ø§Ù„Ø«Ù‚Ø©" : "Confidence")}</strong>
-            <span>{Math.round(confidence)}%</span>
-          </div>
-          <div className="chem-ion-meter"><span style={{ width: `${confidence}%` }}></span></div>
-        </div>
-        <div className="chem-ion-final card-lite">
-          <strong>{c.chemIonFinalTitle || (isArabic ? "Ø§Ù„Ø¬ÙˆØ§Ø¨ Ø§Ù„Ù†Ù‡Ø§Ø¦ÙŠ" : "Final Answer")}</strong>
-          <p>{revealed ? `${finalIonLabel.label} - ${finalIonLabel.name}` : (guidedMode ? (c.chemIonFinalHint || (isArabic ? "Ø§Ø³ØªØ®Ø¯Ù… ÙƒØ§Ø´ÙÙ‹Ø§ Ø¢Ø®Ø± Ø£ÙˆÙ„Ù‹Ø§." : "Use one more reagent first.")) : (isArabic ? "Ø¬Ø±Ù‘Ø¨ ØªØ­Ø¯ÙŠØ¯ Ø§Ù„Ø£ÙŠÙˆÙ† Ø§Ù„Ø¢Ù†." : "Try identifying the ion now."))}</p>
-          <div className="chem-ion-final-actions">
-            <button className="micro-btn" type="button" onClick={handleFinalAnswer}>{c.chemIonFinalButton || (isArabic ? "Ø­Ø¯Ø¯ Ø§Ù„Ø£ÙŠÙˆÙ† Ø§Ù„Ù†Ù‡Ø§Ø¦ÙŠ" : "Identify Final Ion")}</button>
-            <button className="micro-btn secondary" type="button" onClick={() => setRevealed(true)}>{c.chemIonRevealAnswer || (isArabic ? "ÙƒØ´Ù Ø§Ù„Ø¬ÙˆØ§Ø¨" : "Reveal Answer")}</button>
           </div>
         </div>
       </aside>
@@ -2014,9 +1912,9 @@ const ExperimentSection = ({ c, activeProfile, activeMaterial, setActiveMaterial
   const [selectedExperimentIndex, setSelectedExperimentIndex] = useState(null);
   const turnOptions = [2, 4, 6, 8, 10, 12, 14, 16, 18];
   const materialIcons = {
-    physics: "âš›ï¸",
-    chemistry: "ðŸ§ª",
-    biology: "ðŸŒ¿"
+    physics: "⚛️",
+    chemistry: "🧪",
+    biology: "🌿"
   };
   const experimentIcons = {
     physics: (
@@ -2127,22 +2025,23 @@ const ExperimentSection = ({ c, activeProfile, activeMaterial, setActiveMaterial
   const experiments = Array.isArray(currentMaterial.experiments) ? currentMaterial.experiments : [];
   const selectedExperiment = selectedExperimentIndex === null ? null : experiments[selectedExperimentIndex];
   const formatExperimentNumber = (title) => {
-    const match = String(title || "").match(/^(\d+)\s*[-â€“â€”]\s*(.*)$/);
+    const match = String(title || "").match(/^(\d+)\s*[-–—]\s*(.*)$/);
     return match ? { number: match[1], title: match[2] } : { number: "", title: title || "" };
   };
   const isPhysicsInduction = isPhysics && selectedExperimentIndex !== 1;
   const isRtl = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
+  const isArabic = isRtl;
   const isChemistryIon = isChemistry && selectedExperimentIndex === 1;
   const canOpenQuiz = activeProfile?.role === "student";
   const experimentLabTitle = isPhysics && selectedExperimentIndex === 1
-    ? (isRtl ? "Ù…Ø®ØªØ¨Ø± Ø§Ù„ÙÙŠØ²ÙŠØ§Ø¡ â€¢ Ø§Ù„Ø²Ø®Ù… Ø§Ù„Ø®Ø·ÙŠ" : c.physicsCollisionLabTitle)
+    ? (isRtl ? "مختبر الفيزياء • الزخم الخطي" : c.physicsCollisionLabTitle)
     : isChemistryIon
       ? (c.chemIonLabTitle || currentMaterial.labTitle)
     : isBiology && selectedExperimentIndex === 1
       ? (c.bioDnaLabTitle || currentMaterial.labTitle)
       : currentMaterial.labTitle;
   const experimentLabTag = isPhysics && selectedExperimentIndex === 1
-    ? (isRtl ? "Ø§Ù„Ø²Ø®Ù… Ø§Ù„Ø®Ø·ÙŠ" : c.physicsCollisionTag)
+    ? (isRtl ? "الزخم الخطي" : c.physicsCollisionTag)
     : isChemistryIon
       ? (c.chemIonTag || currentMaterial.tag)
     : isBiology && selectedExperimentIndex === 1
@@ -2174,7 +2073,7 @@ const ExperimentSection = ({ c, activeProfile, activeMaterial, setActiveMaterial
               className={`materials-tab ${material.id === currentMaterial.id ? "active" : ""}`}
               onClick={() => setActiveMaterial(material.id)}
             >
-              <span className="materials-tab-icon" aria-hidden="true">{materialIcons[material.id] || "â€¢"}</span>
+              <span className="materials-tab-icon" aria-hidden="true">{materialIcons[material.id] || "•"}</span>
               <span>{material.label}</span>
             </button>
           ))}
@@ -2273,7 +2172,12 @@ const ExperimentSection = ({ c, activeProfile, activeMaterial, setActiveMaterial
             </div>
           </div>
         ) : isPhysics ? (
-          <PhysicsCollisionSimulation c={c} />
+          <ExperimentErrorBoundary
+            title={c.physicsCollisionName || c.labTitle}
+            message={c.physicsCollisionFallback || (isArabic ? "تعذر تحميل تجربة الزخم حاليًا. حاول تحديث الصفحة." : "The momentum experiment could not load. Try reloading the page.")}
+          >
+            <PhysicsCollisionSimulation c={c} />
+          </ExperimentErrorBoundary>
         ) : isChemistry ? (
           selectedExperimentIndex === 1 ? (
             <ChemistryIonDetectionSimulation c={c} currentMaterial={currentMaterial} resetChemistryExperiment={resetChemistryExperiment} />
@@ -2336,86 +2240,13 @@ const FooterSection = ({ c }) => (
   </footer>
 );
 
-const ChatWidget = ({ c, chatOpen, setChatOpen, labContext }) => {
+const ChatWidget = ({ c, chatOpen, setChatOpen }) => {
   const [welcomeVisible, setWelcomeVisible] = useState(true);
-  const [messages, setMessages] = useState([]);
-  const [inputValue, setInputValue] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const scrollRef = useRef(null);
-  const inputRef = useRef(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setWelcomeVisible(false), 4200);
     return () => window.clearTimeout(timer);
   }, []);
-
-  useEffect(() => {
-    if (!chatOpen) return;
-    window.setTimeout(() => inputRef.current?.focus(), 0);
-  }, [chatOpen]);
-
-  useEffect(() => {
-    if (!scrollRef.current) return;
-    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, loading, error, chatOpen]);
-
-  const sendPrompt = async (rawPrompt) => {
-    const prompt = String(rawPrompt || "").trim();
-    if (!prompt || loading) return;
-
-    const nextMessages = [...messages, { role: "user", content: prompt }];
-    setMessages(nextMessages);
-    setInputValue("");
-    setLoading(true);
-    setError("");
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: prompt,
-          history: nextMessages.slice(-12),
-          language: document.documentElement.dir === "rtl" ? "ar" : "en",
-          labContext
-        })
-      });
-
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.message || c.chatErrorGeneric);
-      }
-
-      setMessages((current) => [...current, { role: "assistant", content: String(result.reply || "").trim() || c.chatErrorGeneric }]);
-    } catch (err) {
-      setError(err?.message || c.chatErrorGeneric);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const clearChat = () => {
-    setMessages([]);
-    setInputValue("");
-    setError("");
-  };
-
-  const contextSummary = (() => {
-    if (!labContext) return "";
-    const parts = [];
-    if (labContext.materialLabel) parts.push(labContext.materialLabel);
-    if (labContext.experimentTitle) parts.push(labContext.experimentTitle);
-    if (labContext.state && typeof labContext.state === "object") {
-      const readable = Object.entries(labContext.state)
-        .filter(([, value]) => value !== null && value !== undefined && typeof value !== "object")
-        .slice(0, 4)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join(" • ");
-      if (readable) parts.push(readable);
-    }
-    return parts.join(" • ");
-  })();
 
   return (
     <div className="ai-chat-widget">
@@ -2432,92 +2263,32 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext }) => {
           </div>
         </>
       ) : (
-        <div className="ai-chat-panel expanded">
-          <div className="ai-chat-head">
-            <div className="ai-chat-brand">
-              <div>
-                <div className="ai-chat-mini-name">{c.chatName}</div>
-                <div className="ai-chat-status">{c.chatStatus}</div>
-              </div>
-            </div>
-            <div className="ai-chat-head-actions">
-              <button className="ai-chat-new" type="button" onClick={clearChat}>{c.chatClear}</button>
-              <button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label={c.chatCloseLabel || "Close chat"} type="button">×</button>
-            </div>
+        <div className="ai-chat-panel">
+          <div className="ai-chat-head simple">
+            <div className="ai-chat-mini-name">{c.chatName}</div>
+            <button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label={c.chatCloseLabel || "Close chat"} type="button">×</button>
           </div>
           <div className="ai-chat-bubble ai-chat-bubble-intro">{c.chatIntroTitle}<br />{c.chatIntroText}</div>
           <div className="ai-chat-bubble">{c.chatMessage}</div>
-          {contextSummary ? <div className="ai-chat-context">{c.chatContextPrefix}: {contextSummary}</div> : null}
           <div className="ai-chat-section-label">{c.chatLabel}</div>
-          <div className="ai-chat-actions">
-            <button className="ai-chat-action" type="button" onClick={() => sendPrompt(c.chatPrimary)} disabled={loading}>
-              <span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">{">"}</span>
-            </button>
-            <button className="ai-chat-action" type="button" onClick={() => sendPrompt(c.chatSecondary)} disabled={loading}>
-              <span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">{">"}</span>
-            </button>
-          </div>
-          <div className="ai-chat-scroll" ref={scrollRef}>
-            {messages.map((message, index) => (
-              <div className={`ai-chat-msg ${message.role}`} key={`${message.role}-${index}`}>
-                <div className="ai-chat-line">{message.content}</div>
-              </div>
-            ))}
-            {loading ? (
-              <div className="ai-chat-msg assistant pending" aria-live="polite">
-                <span className="ai-chat-dot"></span><span className="ai-chat-dot"></span><span className="ai-chat-dot"></span>
-                <span className="ai-chat-thinking">{c.chatThinking}</span>
-              </div>
-            ) : null}
-          </div>
-          {error ? (
-            <div className="ai-chat-error" role="alert">
-              <span>{error}</span>
-              <button className="ai-chat-retry" type="button" onClick={() => setError("")}>{c.chatRetry}</button>
-            </div>
-          ) : null}
-          <form className="ai-chat-input" onSubmit={(event) => { event.preventDefault(); sendPrompt(inputValue); }}>
-            <div className="ai-chat-input-shell">
-              <input
-                ref={inputRef}
-                className="ai-chat-field"
-                type="text"
-                value={inputValue}
-                onChange={(event) => setInputValue(event.target.value)}
-                placeholder={c.chatPlaceholder}
-                disabled={loading}
-              />
-              <button className="ai-chat-send" type="submit" aria-label={c.chatSendLabel || "Send"} disabled={loading || !inputValue.trim()}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12h14"></path>
-                  <path d="m13 6 6 6-6 6"></path>
-                </svg>
-              </button>
-            </div>
-          </form>
-          <div className="ai-chat-disclaimer">{c.chatDisclaimer}</div>
+          <div className="ai-chat-actions"><button className="ai-chat-action" type="button"><span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">{">"}</span></button><button className="ai-chat-action" type="button"><span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">{">"}</span></button></div>
+          <div className="ai-chat-input"><div className="ai-chat-input-shell"><span className="ai-chat-placeholder">{c.chatPlaceholder}</span><button className="ai-chat-send" type="button" aria-label={c.chatSendLabel || "Send"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></button></div></div>
         </div>
       )}
     </div>
   );
 };
 
-const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {
+const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {
   const [passwordVisible, setPasswordVisible] = useState(false);
-  const showPasswordLabel = c.loginPasswordToggleShow || "Ø¥Ø¸Ù‡Ø§Ø± ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±";
-  const hidePasswordLabel = c.loginPasswordToggleHide || "Ø¥Ø®ÙØ§Ø¡ ÙƒÙ„Ù…Ø© Ø§Ù„Ù…Ø±ÙˆØ±";
+  const showPasswordLabel = c.loginPasswordToggleShow || "إظهار كلمة المرور";
+  const hidePasswordLabel = c.loginPasswordToggleHide || "إخفاء كلمة المرور";
   if (!loginOpen) return null;
-  const isRegisterMode = authMode === "register";
-  const signInLabel = c.loginSignIn || "Sign in";
-  const createAccountLabel = c.loginCreateAccount || "Create account";
-  const createAccountNote = c.loginCreateNote || "Create a secure account to access the platform.";
-  const createAccountHelper = c.loginCreateHelper || "Students can create an account directly. Teachers need an access code.";
-  const teacherAccessCodeLabel = c.loginTeacherAccessCodeLabel || "Teacher access code";
-  const teacherAccessCodePlaceholder = c.loginTeacherAccessCodePlaceholder || "Enter teacher access code";
 
   const roles = [
     { id: "teacher", title: c.loginRoles.teacher.title, text: c.loginRoles.teacher.text },
     { id: "student", title: c.loginRoles.student.title, text: c.loginRoles.student.text },
+    { id: "guest", title: c.loginRoles.guest.title, text: c.loginRoles.guest.text }
   ];
 
   return (
@@ -2528,10 +2299,6 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
           <div className="eyebrow login-eyebrow"><span className="eyebrow-dot" aria-hidden="true"></span><span>{c.loginEyebrow}</span></div>
           <h2 id="login-title">{c.loginTitle}</h2>
           <p>{c.loginText}</p>
-        </div>
-        <div className="auth-mode-switch">
-          <button className={`btn ${authMode === "login" ? "btn-primary" : "btn-secondary"}`} type="button" onClick={() => setAuthMode("login")}>{signInLabel}</button>
-          <button className={`btn ${isRegisterMode ? "btn-primary" : "btn-secondary"}`} type="button" onClick={() => setAuthMode("register")}>{createAccountLabel}</button>
         </div>
         <div className="login-role-grid">
           {roles.map((role) => (
@@ -2546,18 +2313,14 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
             </button>
           ))}
         </div>
-        <form className="login-form-card" onSubmit={onSubmit} noValidate={false}>
+        <form className="login-form-card" onSubmit={onSubmit} noValidate={selectedRole === "guest"}>
           <div className="login-form-head">
             <strong>{c.loginRoles[selectedRole].title}</strong>
-            <span>{isRegisterMode ? createAccountNote : c.loginFormNote}</span>
+            <span>{selectedRole === "guest" ? c.loginGuestNote : c.loginFormNote}</span>
           </div>
-          <div className={`login-form-grid ${isRegisterMode ? "register" : "member"}`}>
-            {isRegisterMode ? (
+          <div className={`login-form-grid ${selectedRole === "guest" ? "guest" : "member"}`}>
+            {selectedRole !== "guest" ? (
               <>
-                <label className="login-field">
-                  <span>{c.loginNameLabel}</span>
-                  <input type="text" required value={loginForm.name} onChange={(event) => setLoginForm({ ...loginForm, name: event.target.value })} placeholder={c.loginNamePlaceholder} />
-                </label>
                 <label className="login-field">
                   <span>{c.loginEmailLabel}</span>
                   <input type="email" required value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
@@ -2590,32 +2353,20 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
                     </button>
                   </div>
                 </label>
-                {selectedRole === "teacher" ? (
-                  <label className="login-field">
-                    <span>{teacherAccessCodeLabel}</span>
-                    <input type="text" required value={loginForm.teacherAccessCode} onChange={(event) => setLoginForm({ ...loginForm, teacherAccessCode: event.target.value })} placeholder={teacherAccessCodePlaceholder} />
-                  </label>
-                ) : null}
               </>
             ) : (
-              <>
-                <label className="login-field">
-                  <span>{c.loginEmailLabel}</span>
-                  <input type="email" required value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
-                </label>
-                <label className="login-field">
-                  <span>{c.loginPasswordLabel}</span>
-                  <input type="password" required minLength="8" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
-                </label>
-              </>
+              <label className="login-field">
+                <span>{c.loginGuestLabel}</span>
+                <input type="text" value={loginForm.purpose} onChange={(event) => setLoginForm({ ...loginForm, purpose: event.target.value })} placeholder={c.loginGuestPlaceholder} />
+              </label>
             )}
           </div>
           {loginError ? <div className="login-error" role="alert">{loginError}</div> : null}
           <div className="login-actions">
             <button className="btn btn-secondary" type="button" onClick={onClose}>{c.loginCancel}</button>
-            <button className="btn btn-primary" type="submit" disabled={loginSubmitting}>{loginSubmitting ? c.loginSubmitting : (isRegisterMode ? createAccountLabel : c.loginContinue)}</button>
+            <button className="btn btn-primary" type="submit" disabled={loginSubmitting}>{loginSubmitting ? c.loginSubmitting : c.loginContinue}</button>
           </div>
-          <div className="login-helper">{isRegisterMode ? createAccountHelper : c.loginMemberHelper}</div>
+          <div className="login-helper">{selectedRole === "guest" ? c.loginGuestHelper : c.loginMemberHelper}</div>
         </form>
       </div>
     </div>
@@ -2634,17 +2385,6 @@ const TeacherDashboard = ({ c, activeProfile, authToken, onBack }) => {
 
     setDashboardState((current) => ({ ...current, loading: true, error: "" }));
     try {
-      if (window.NawaLocalPlatform?.shouldUseLocalAuth()) {
-        const result = window.NawaLocalPlatform.getTeacherDashboard(activeProfile, { query: searchText, sort: nextSort });
-        setDashboardState({
-          loading: false,
-          error: "",
-          summary: result.summary || [],
-          students: result.students || []
-        });
-        return;
-      }
-
       const params = new URLSearchParams();
       if (searchText.trim()) params.set("q", searchText.trim());
       params.set("sort", nextSort);
@@ -2653,60 +2393,16 @@ const TeacherDashboard = ({ c, activeProfile, authToken, onBack }) => {
       });
       const result = await response.json();
       if (!response.ok) {
-        setDashboardState({ loading: false, error: result.error || c.teacherDashboardLoadError, summary: [], students: [] });
+        setDashboardState({ loading: false, error: result.message || c.teacherDashboardLoadError, summary: [], students: [] });
         return;
       }
-
-      // Real backend returns a flat array of result rows â€” adapt to dashboard shape
-      const rows = Array.isArray(result) ? result : [];
-      const students = rows.map((row) => ({
-        id: String(row.id),
-        name: row.student_name,
-        grade: "",
-        section: "",
-        experiment: row.experiment,
-        progress: Math.round((row.score / row.total) * 100),
-        quizScore: row.score,
-        lastActive: new Date(row.date).toLocaleDateString(),
-        status: row.score / row.total >= 0.7 ? "Ù…ÙƒØªÙ…Ù„" : "ÙŠØ­ØªØ§Ø¬ Ø¯Ø¹Ù…"
-      }));
-
-      // Client-side search and sort
-      const q = searchText.trim().toLowerCase();
-      const filtered = q
-        ? students.filter((s) => [s.name, s.experiment, s.status].some((v) => v.toLowerCase().includes(q)))
-        : students;
-      const sorters = {
-        progress: (a, b) => b.progress - a.progress,
-        score: (a, b) => b.quizScore - a.quizScore,
-        name: (a, b) => a.name.localeCompare(b.name, "ar")
-      };
-      filtered.sort(sorters[nextSort] || sorters.progress);
-
       setDashboardState({
         loading: false,
         error: "",
-        summary: [
-          { value: String(students.length), title: c.teacherDashboardSummaryTotal || "Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù†ØªØ§Ø¦Ø¬", text: "" },
-          {
-            value: students.length ? Math.round(students.reduce((s, r) => s + r.progress, 0) / students.length) + "%" : "--",
-            title: c.teacherDashboardSummaryAvg || "Ù…ØªÙˆØ³Ø· Ø§Ù„Ø¥Ù†Ø¬Ø§Ø²",
-            text: ""
-          }
-        ],
-        students: filtered
+        summary: result.summary || [],
+        students: result.students || []
       });
     } catch (error) {
-      if (window.NawaLocalPlatform?.shouldUseLocalAuth()) {
-        const result = window.NawaLocalPlatform.getTeacherDashboard(activeProfile, { query: searchText, sort: nextSort });
-        setDashboardState({
-          loading: false,
-          error: "",
-          summary: result.summary || [],
-          students: result.students || []
-        });
-        return;
-      }
       setDashboardState({ loading: false, error: c.teacherDashboardLoadError, summary: [], students: [] });
     }
   };
@@ -2780,7 +2476,7 @@ const TeacherDashboard = ({ c, activeProfile, authToken, onBack }) => {
                   <span>{c.teacherDashboardProgressLabel}: {student.progress}%</span>
                   <span>{c.teacherDashboardScoreLabel}: {student.quizScore}/10</span>
                   <span>{student.lastActive}</span>
-                  <span className={`teacher-student-status ${student.status === "ÙŠØ­ØªØ§Ø¬ Ø¯Ø¹Ù…" ? "warn" : ""}`}>{student.status}</span>
+                  <span className={`teacher-student-status ${student.status === "يحتاج دعم" ? "warn" : ""}`}>{student.status}</span>
                 </div>
               </article>
             ))}
@@ -2794,46 +2490,46 @@ const TeacherDashboard = ({ c, activeProfile, authToken, onBack }) => {
 const QUIZ_BANK = {
   physics: [
     {
-      promptAr: "Ù…Ø§Ø°Ø§ ÙŠØ­Ø¯Ø« Ù„Ù„Ø¥Ø´Ø§Ø±Ø© Ø§Ù„Ù…Ø³ØªØ­Ø«Ø© Ø¹Ù†Ø¯Ù…Ø§ ØªØ²ÙŠØ¯ Ø¹Ø¯Ø¯ Ù„ÙØ§Øª Ø§Ù„Ù…Ù„ÙØŸ",
+      promptAr: "ماذا يحدث للإشارة المستحثة عندما تزيد عدد لفات الملف؟",
       promptEn: "What happens to the induced signal when the number of coil turns increases?",
-      optionsAr: ["ØªØ²Ø¯Ø§Ø¯", "ØªØ®ØªÙÙŠ", "ØªØ¨Ù‚Ù‰ Ø«Ø§Ø¨ØªØ©"],
+      optionsAr: ["تزداد", "تختفي", "تبقى ثابتة"],
       optionsEn: ["It increases", "It disappears", "It stays constant"],
       answer: 0
     },
     {
-      promptAr: "ÙÙŠ Ø§Ù„ØªØµØ§Ø¯Ù… Ø¯Ø§Ø®Ù„ Ù†Ø¸Ø§Ù… Ù…ØºÙ„Ù‚ØŒ Ø£ÙŠ ÙƒÙ…ÙŠØ© ØªØ¨Ù‚Ù‰ Ù…Ø­ÙÙˆØ¸Ø© Ø¯Ø§Ø¦Ù…Ù‹Ø§ØŸ",
+      promptAr: "في التصادم داخل نظام مغلق، أي كمية تبقى محفوظة دائمًا؟",
       promptEn: "In a closed-system collision, which quantity stays conserved?",
-      optionsAr: ["Ø§Ù„Ø²Ø®Ù…", "Ø§Ù„Ù„ÙˆÙ†", "Ø¯Ø±Ø¬Ø© Ø§Ù„Ø­Ø±Ø§Ø±Ø© ÙÙ‚Ø·"],
+      optionsAr: ["الزخم", "اللون", "درجة الحرارة فقط"],
       optionsEn: ["Momentum", "Color", "Temperature only"],
       answer: 0
     }
   ],
   chemistry: [
     {
-      promptAr: "Ù…Ø§ ÙˆØ¸ÙŠÙØ© Ø§Ù„Ø¬Ø³Ø± Ø§Ù„Ù…Ù„Ø­ÙŠ ÙÙŠ Ø§Ù„Ø®Ù„ÙŠØ© Ø§Ù„ØºÙ„ÙØ§Ù†ÙŠØ©ØŸ",
+      promptAr: "ما وظيفة الجسر الملحي في الخلية الغلفانية؟",
       promptEn: "What is the role of the salt bridge in a galvanic cell?",
-      optionsAr: ["ÙŠØ­Ø§ÙØ¸ Ø¹Ù„Ù‰ ØªÙˆØ§Ø²Ù† Ø§Ù„Ø´Ø­Ù†Ø§Øª", "ÙŠØ²ÙŠØ¯ Ù„ÙˆÙ† Ø§Ù„Ù…Ø­Ù„ÙˆÙ„", "ÙŠÙˆÙ‚Ù Ø­Ø±ÙƒØ© Ø§Ù„Ø£ÙŠÙˆÙ†Ø§Øª"],
+      optionsAr: ["يحافظ على توازن الشحنات", "يزيد لون المحلول", "يوقف حركة الأيونات"],
       optionsEn: ["Maintains charge balance", "Changes solution color", "Stops ion movement"],
       answer: 0
     },
     {
-      promptAr: "Ù…ØªÙ‰ ØªÙƒÙˆÙ† Ø§Ù„Ø®Ù„ÙŠØ© Ø§Ù„ØºÙ„ÙØ§Ù†ÙŠØ© Ø£Ù‚ÙˆÙ‰ Ø¹Ø§Ø¯Ø©ØŸ",
+      promptAr: "متى تكون الخلية الغلفانية أقوى عادة؟",
       promptEn: "When is a galvanic cell usually stronger?",
-      optionsAr: ["Ø¹Ù†Ø¯ ÙˆØ¬ÙˆØ¯ Ù‚Ø·Ø¨ÙŠÙ† Ù…Ø®ØªÙ„ÙÙŠÙ†", "Ø¹Ù†Ø¯ ÙØµÙ„ Ø§Ù„Ø£Ø³Ù„Ø§Ùƒ", "Ø¹Ù†Ø¯ ØºÙŠØ§Ø¨ Ø§Ù„Ø¬Ø³Ø± Ø§Ù„Ù…Ù„Ø­ÙŠ"],
+      optionsAr: ["عند وجود قطبين مختلفين", "عند فصل الأسلاك", "عند غياب الجسر الملحي"],
       optionsEn: ["With different electrodes", "When wires are disconnected", "Without a salt bridge"],
       answer: 0
     }
   ],
   biology: [
     {
-      promptAr: "Ø£ÙŠ Ø¹Ø§Ù…Ù„ ÙŠØ¯Ø¹Ù… Ø¹Ù…Ù„ÙŠØ© Ø§Ù„Ø¨Ù†Ø§Ø¡ Ø§Ù„Ø¶ÙˆØ¦ÙŠ Ù…Ø¨Ø§Ø´Ø±Ø©ØŸ",
+      promptAr: "أي عامل يدعم عملية البناء الضوئي مباشرة؟",
       promptEn: "Which factor directly supports photosynthesis?",
-      optionsAr: ["Ø§Ù„Ø¶ÙˆØ¡", "Ø§Ù„Ø¸Ù„Ø§Ù…", "Ø§Ù†Ø¹Ø¯Ø§Ù… Ø§Ù„Ù…Ø§Ø¡"],
+      optionsAr: ["الضوء", "الظلام", "انعدام الماء"],
       optionsEn: ["Light", "Darkness", "No water"],
       answer: 0
     },
     {
-      promptAr: "ÙÙŠ ØªØ¶Ø§Ø¹Ù DNAØŒ Ø£ÙŠ Ù‚Ø§Ø¹Ø¯Ø© ØªØ±ØªØ¨Ø· Ù…Ø¹ AØŸ",
+      promptAr: "في تضاعف DNA، أي قاعدة ترتبط مع A؟",
       promptEn: "During DNA replication, which base pairs with A?",
       optionsAr: ["T", "C", "G"],
       optionsEn: ["T", "C", "G"],
@@ -2842,75 +2538,13 @@ const QUIZ_BANK = {
   ]
 };
 
-const QuizPage = ({ c, quizContext, onBack, authToken }) => {
+const QuizPage = ({ c, quizContext, onBack }) => {
   const isArabic = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
   const materialId = quizContext?.materialId || "physics";
   const questions = QUIZ_BANK[materialId] || QUIZ_BANK.physics;
   const [answers, setAnswers] = useState({});
-  const [resultSaved, setResultSaved] = useState(false);
-  const [aiQuestions, setAiQuestions] = useState(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState("");
-  const displayQuestions = aiQuestions || questions;
-  const score = displayQuestions.reduce((total, question, index) => total + (answers[index] === question.answer ? 1 : 0), 0);
-  const completed = Object.keys(answers).length === displayQuestions.length;
-
-  useEffect(() => {
-    setAnswers({});
-    setResultSaved(false);
-    setAiQuestions(null);
-    setAiError("");
-    setAiLoading(false);
-  }, [materialId]);
-
-  const loadAiQuestions = async () => {
-    setAiLoading(true);
-    setAiError("");
-    try {
-      const response = await fetch("/api/quiz", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          materialId,
-          experimentIndex: quizContext?.experimentIndex,
-          experimentTitle: quizContext?.experimentTitle,
-          language: isArabic ? "ar" : "en",
-          count: 3
-        })
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.message || c.quizAiFailed);
-      }
-      const nextQuestions = Array.isArray(result.questions) ? result.questions : [];
-      if (!nextQuestions.length) {
-        throw new Error(c.quizAiFailed);
-      }
-      setAnswers({});
-      setAiQuestions(nextQuestions);
-    } catch (error) {
-      setAiError(error?.message || c.quizAiFailed);
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!completed || resultSaved || !authToken) return;
-    setResultSaved(true);
-    fetch("https://nawa-1.onrender.com/results", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${authToken}`
-      },
-      body: JSON.stringify({
-        experiment: quizContext?.experimentTitle || materialId,
-        score,
-        total: displayQuestions.length
-      })
-    }).catch(() => {}); // silent fail â€” don't block the UI
-  }, [completed, resultSaved, authToken, score, displayQuestions.length, materialId, quizContext]);
+  const score = questions.reduce((total, question, index) => total + (answers[index] === question.answer ? 1 : 0), 0);
+  const completed = Object.keys(answers).length === questions.length;
 
   return (
     <section className="quiz-page" id="quiz-page">
@@ -2927,16 +2561,13 @@ const QuizPage = ({ c, quizContext, onBack, authToken }) => {
           <p>{c.quizText}</p>
           <div className="quiz-top-actions">
             <button className="btn btn-secondary" type="button" onClick={onBack}>{c.backToExperiments}</button>
-            <button className="btn btn-primary quiz-ai-btn" type="button" onClick={loadAiQuestions} disabled={aiLoading}>{aiLoading ? c.quizAiLoading : c.quizAiGenerate}</button>
-            <div className="quiz-score-pill">{c.quizScoreLabel}: {score}/{displayQuestions.length}</div>
+            <div className="quiz-score-pill">{c.quizScoreLabel}: {score}/{questions.length}</div>
           </div>
-          {aiError ? <div className="quiz-ai-error" role="alert">{aiError}</div> : null}
-          {aiQuestions ? <div className="quiz-ai-badge">{c.quizAiBadge}</div> : null}
         </div>
         <div className="quiz-question-list">
-          {displayQuestions.map((question, index) => {
-            const prompt = question.prompt || (isArabic ? question.promptAr : question.promptEn);
-            const options = question.options || (isArabic ? question.optionsAr : question.optionsEn);
+          {questions.map((question, index) => {
+            const prompt = isArabic ? question.promptAr : question.promptEn;
+            const options = isArabic ? question.optionsAr : question.optionsEn;
             return (
               <article className="quiz-question-card" key={`${materialId}-${index}`}>
                 <div className="quiz-question-number">{String(index + 1).padStart(2, "0")}</div>
@@ -2960,7 +2591,7 @@ const QuizPage = ({ c, quizContext, onBack, authToken }) => {
         {completed ? (
           <div className="quiz-result-banner">
             <strong>{c.quizCompletedLabel}</strong>
-            <span>{c.quizScoreLabel}: {score}/{displayQuestions.length}</span>
+            <span>{c.quizScoreLabel}: {score}/{questions.length}</span>
           </div>
         ) : null}
       </div>
