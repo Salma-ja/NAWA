@@ -2240,13 +2240,68 @@ const FooterSection = ({ c }) => (
   </footer>
 );
 
-const ChatWidget = ({ c, chatOpen, setChatOpen }) => {
+const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) => {
   const [welcomeVisible, setWelcomeVisible] = useState(true);
+  const [draft, setDraft] = useState("");
+  const [messages, setMessages] = useState([]);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const scrollRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setWelcomeVisible(false), 4200);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (chatOpen) window.requestAnimationFrame(() => inputRef.current?.focus?.());
+  }, [chatOpen]);
+
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, sending, error]);
+
+  const sendMessage = async (text) => {
+    const message = String(text || "").trim();
+    if (!message || sending) return;
+
+    const nextHistory = [...messages, { role: "user", content: message }];
+    setMessages(nextHistory);
+    setDraft("");
+    setSending(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message,
+          history: messages,
+          labContext,
+          language
+        })
+      });
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.message || (language === "ar" ? "تعذر الوصول إلى المساعد الآن." : "The tutor is unavailable right now."));
+      }
+
+      setMessages((current) => [...current, { role: "assistant", content: result.reply || (language === "ar" ? "حاضر." : "Sure.") }]);
+    } catch (err) {
+      setError(err?.message || (language === "ar" ? "تعذر الوصول إلى المساعد الآن." : "The tutor is unavailable right now."));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    sendMessage(draft);
+  };
 
   return (
     <div className="ai-chat-widget">
@@ -2271,8 +2326,56 @@ const ChatWidget = ({ c, chatOpen, setChatOpen }) => {
           <div className="ai-chat-bubble ai-chat-bubble-intro">{c.chatIntroTitle}<br />{c.chatIntroText}</div>
           <div className="ai-chat-bubble">{c.chatMessage}</div>
           <div className="ai-chat-section-label">{c.chatLabel}</div>
-          <div className="ai-chat-actions"><button className="ai-chat-action" type="button"><span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">{">"}</span></button><button className="ai-chat-action" type="button"><span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">{">"}</span></button></div>
-          <div className="ai-chat-input"><div className="ai-chat-input-shell"><span className="ai-chat-placeholder">{c.chatPlaceholder}</span><button className="ai-chat-send" type="button" aria-label={c.chatSendLabel || "Send"}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg></button></div></div>
+          <div className="ai-chat-actions">
+            <button className="ai-chat-action" type="button" onClick={() => sendMessage(c.chatPrimary)}><span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">{">"}</span></button>
+            <button className="ai-chat-action" type="button" onClick={() => sendMessage(c.chatSecondary)}><span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">{">"}</span></button>
+          </div>
+          <div className="ai-chat-scroll" ref={scrollRef}>
+            {messages.length === 0 ? (
+              <div className="ai-chat-msg assistant">
+                <div className="ai-chat-line">{language === "ar" ? "اكتب سؤالك وسأساعدك مباشرة." : "Ask me anything and I’ll help right away."}</div>
+              </div>
+            ) : messages.map((message, index) => (
+              <div key={`${message.role}-${index}`} className={`ai-chat-msg ${message.role}`}>
+                <div className="ai-chat-line">{message.content}</div>
+              </div>
+            ))}
+            {sending ? (
+              <div className="ai-chat-msg assistant pending" aria-live="polite">
+                <span className="ai-chat-dot"></span>
+                <span className="ai-chat-dot"></span>
+                <span className="ai-chat-dot"></span>
+                <span className="ai-chat-thinking">{language === "ar" ? "جارٍ التفكير..." : "Thinking..."}</span>
+              </div>
+            ) : null}
+            {error ? (
+              <div className="ai-chat-error" role="alert">
+                <span>{error}</span>
+                <button type="button" className="ai-chat-retry" onClick={() => setError("")}>{language === "ar" ? "إغلاق" : "Close"}</button>
+              </div>
+            ) : null}
+          </div>
+          <form className="ai-chat-input" onSubmit={handleSubmit}>
+            <div className="ai-chat-input-shell">
+              <input
+                ref={inputRef}
+                className="ai-chat-field"
+                type="text"
+                value={draft}
+                onChange={(event) => setDraft(event.target.value)}
+                placeholder={c.chatPlaceholder}
+                disabled={sending}
+                aria-label={c.chatPlaceholder}
+              />
+              <button className="ai-chat-send" type="submit" aria-label={c.chatSendLabel || "Send"} disabled={!draft.trim() || sending}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12h14"></path>
+                  <path d="m13 6 6 6-6 6"></path>
+                </svg>
+              </button>
+            </div>
+            <div className="ai-chat-disclaimer">{language === "ar" ? "قد يخطئ أحيانًا، لكنك تحصل على ردود سريعة ومباشرة." : "It can make mistakes, but it gives fast, direct help."}</div>
+          </form>
         </div>
       )}
     </div>

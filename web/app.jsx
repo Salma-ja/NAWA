@@ -390,7 +390,7 @@ function App() {
               <FooterSection c={c} />
             </>
           )}
-          <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} labContext={chatContext} />
+          <ChatWidget c={c} chatOpen={chatOpen} setChatOpen={setChatOpen} labContext={chatContext} language={language} />
           <LoginPortal c={c} loginOpen={loginOpen} authMode={authMode} setAuthMode={setAuthMode} selectedRole={selectedRole} setSelectedRole={setSelectedRole} loginForm={loginForm} setLoginForm={setLoginForm} loginError={loginError} loginSubmitting={loginSubmitting} onClose={handleCloseLogin} onSubmit={handleSubmitLogin} />
         </div>
       </div>
