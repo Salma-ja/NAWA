@@ -2332,7 +2332,7 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) =
             <div className="ai-chat-mini-name">{c.chatName}</div>
             <button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label={c.chatCloseLabel || "Close chat"} type="button">×</button>
           </div>
-          <div className="ai-chat-bubble ai-chat-bubble-intro">{language === "ar" ? 'أهلا! أنا جريب' : 'Hi! I am Jareeb'}<br />{c.chatIntroText}</div>
+          <div className="ai-chat-bubble ai-chat-bubble-intro">{language === "ar" ? 'أهلا! أنا جريب' : 'Hi! I am Jarreeb'}<br />{c.chatIntroText}</div>
           <div className="ai-chat-bubble">{c.chatMessage}</div>
           <div className="ai-chat-section-label">{c.chatLabel}</div>
           <div className="ai-chat-actions">
