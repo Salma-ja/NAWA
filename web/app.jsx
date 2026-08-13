@@ -293,6 +293,16 @@ if (!response.ok) {
   return;
 }
 
+// Enforce role match — teacher can't log in from student portal and vice versa
+if (authMode === "login" && result.role !== selectedRole) {
+  setLoginError(
+    selectedRole === "teacher"
+      ? "This account is not a teacher account."
+      : "This account is not a student account."
+  );
+  return;
+}
+
 setActiveProfile({ name: result.name, role: result.role });
 setAuthToken(result.token);
       setCurrentView("home");
@@ -304,6 +314,13 @@ setAuthToken(result.token);
     } finally {
       setLoginSubmitting(false);
     }
+  };
+
+  const handleLogout = () => {
+    setActiveProfile(null);
+    setAuthToken("");
+    setCurrentView("home");
+    setLoginForm({ name: "", email: "", password: "", teacherAccessCode: "" });
   };
 
   const handleOpenDashboard = () => {
@@ -372,7 +389,7 @@ setAuthToken(result.token);
       <div className="orb three"></div>
       <div className="shell">
         <div className="container">
-          <Header c={c} isArabic={isArabic} language={language} theme={theme} onToggleLanguage={() => setLanguage(language === "ar" ? "en" : "ar")} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenLogin={handleOpenLogin} activeProfile={activeProfileLabel} onOpenDashboard={handleOpenDashboard} isTeacher={isTeacher} />
+          <Header c={c} isArabic={isArabic} language={language} theme={theme} onToggleLanguage={() => setLanguage(language === "ar" ? "en" : "ar")} onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} onOpenLogin={handleOpenLogin} activeProfile={activeProfileLabel} onOpenDashboard={handleOpenDashboard} isTeacher={isTeacher} onLogout={handleLogout} />
           {currentView === "dashboard" ? (
             <TeacherDashboard c={c} activeProfile={activeProfile} authToken={authToken} onBack={handleOpenHome} />
           ) : currentView === "quiz" ? (
