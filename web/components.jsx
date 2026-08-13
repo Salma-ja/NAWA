@@ -2382,10 +2382,10 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) =
   );
 };
 
-const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {
-  const [passwordVisible, setPasswordVisible] = useState(false);
+const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {  const [passwordVisible, setPasswordVisible] = useState(false);
   const showPasswordLabel = c.loginPasswordToggleShow || "إظهار كلمة المرور";
   const hidePasswordLabel = c.loginPasswordToggleHide || "إخفاء كلمة المرور";
+  const isRegister = authMode === "register";                                                                                                                                                                        
   if (!loginOpen) return null;
 
   const roles = [
@@ -2469,7 +2469,13 @@ const LoginPortal = ({ c, loginOpen, selectedRole, setSelectedRole, loginForm, s
             <button className="btn btn-secondary" type="button" onClick={onClose}>{c.loginCancel}</button>
             <button className="btn btn-primary" type="submit" disabled={loginSubmitting}>{loginSubmitting ? c.loginSubmitting : c.loginContinue}</button>
           </div>
-          <div className="login-helper">{selectedRole === "guest" ? c.loginGuestHelper : c.loginMemberHelper}</div>
+         <div className="login-helper">
+  {isRegister ? (
+    <span>لديك حساب؟ <button type="button" style={{background:"none",border:"none",color:"var(--accent)",cursor:"pointer",padding:0}} onClick={() => setAuthMode("login")}>تسجيل الدخول</button></span>
+  ) : (
+    <span>{selectedRole === "guest" ? c.loginGuestHelper : c.loginMemberHelper} <button type="button" style={{background:"none",border:"none",color:"var(--accent)",cursor:"pointer",padding:0}} onClick={() => setAuthMode("register")}>إنشاء حساب جديد</button></span>
+  )}
+</div>
         </form>
       </div>
     </div>
@@ -2491,20 +2497,35 @@ const TeacherDashboard = ({ c, activeProfile, authToken, onBack }) => {
       const params = new URLSearchParams();
       if (searchText.trim()) params.set("q", searchText.trim());
       params.set("sort", nextSort);
-      const response = await fetch(`/api/teacher/dashboard?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${authToken}` }
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        setDashboardState({ loading: false, error: result.message || c.teacherDashboardLoadError, summary: [], students: [] });
-        return;
-      }
-      setDashboardState({
-        loading: false,
-        error: "",
-        summary: result.summary || [],
-        students: result.students || []
-      });
+      const response = await fetch("https://nawa-1.onrender.com/dashboard", {
+  headers: { Authorization: `Bearer ${authToken}` }
+});
+const result = await response.json();
+if (!response.ok) {
+  setDashboardState({ loading: false, error: result.error || c.teacherDashboardLoadError, summary: [], students: [] });
+  return;
+}
+const rows = Array.isArray(result) ? result : [];
+const students = rows.map((row) => ({
+  id: String(row.id),
+  name: row.student_name,
+  grade: "",
+  section: "",
+  experiment: row.experiment,
+  progress: Math.round((row.score / row.total) * 100),
+  quizScore: row.score,
+  lastActive: new Date(row.date).toLocaleDateString(),
+  status: row.score / row.total >= 0.7 ? "مكتمل" : "يحتاج دعم"
+}));
+setDashboardState({
+  loading: false,
+  error: "",
+  summary: [
+    { value: String(students.length), title: "إجمالي النتائج", text: "" },
+    { value: students.length ? Math.round(students.reduce((s, r) => s + r.progress, 0) / students.length) + "%" : "--", title: "متوسط الإنجاز", text: "" }
+  ],
+  students
+});
     } catch (error) {
       setDashboardState({ loading: false, error: c.teacherDashboardLoadError, summary: [], students: [] });
     }
