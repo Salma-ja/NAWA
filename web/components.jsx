@@ -2288,7 +2288,7 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) =
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          history: messages,
+          history: nextHistory,
           labContext,
           language
         })
@@ -2332,7 +2332,7 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) =
             <div className="ai-chat-mini-name">{c.chatName}</div>
             <button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label={c.chatCloseLabel || "Close chat"} type="button">×</button>
           </div>
-          <div className="ai-chat-bubble ai-chat-bubble-intro">{c.chatIntroTitle}<br />{c.chatIntroText}</div>
+          <div className="ai-chat-bubble ai-chat-bubble-intro">{language === "ar" ? 'أهلا! أنا جريب' : 'Hi! I am Jareeb'}<br />{c.chatIntroText}</div>
           <div className="ai-chat-bubble">{c.chatMessage}</div>
           <div className="ai-chat-section-label">{c.chatLabel}</div>
           <div className="ai-chat-actions">
