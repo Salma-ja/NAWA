@@ -278,27 +278,23 @@ function App() {
             password: loginForm.password
           };
 
-      let result;
-      if (window.NawaLocalPlatform?.shouldUseLocalAuth()) {
-        result = authMode === "register"
-          ? await window.NawaLocalPlatform.register(payload)
-          : await window.NawaLocalPlatform.login(payload);
-      } else {
-        const endpoint = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-        result = await response.json();
-        if (!response.ok) {
-          setLoginError(result.message || c.loginErrorGeneric);
-          return;
-        }
-      }
+    
+const endpoint = authMode === "register"
+  ? "https://nawa-1.onrender.com/register"
+  : "https://nawa-1.onrender.com/login";
+const response = await fetch(endpoint, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload)
+});
+const result = await response.json();
+if (!response.ok) {
+  setLoginError(result.error || c.loginErrorGeneric);
+  return;
+}
 
-      setActiveProfile(result.profile);
-      setAuthToken(result.token);
+setActiveProfile({ name: result.name, role: result.role });
+setAuthToken(result.token);
       setCurrentView("home");
       setLoginOpen(false);
       setAuthMode("login");
