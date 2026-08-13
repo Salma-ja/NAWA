@@ -137,7 +137,11 @@ const HeroScienceGlyph = ({ type }) => {
   );
 };
 
-const Header = ({ c, language, onToggleLanguage, onOpenLogin, activeProfile, onOpenDashboard, isTeacher }) => (
+const Header = ({ c, language, onToggleLanguage, onOpenLogin, activeProfile, onOpenDashboard, isTeacher, onLogout }) => {
+  const isArabic = language === "ar";
+  const loginLabel = isArabic ? "تسجيل الدخول" : "Log in";
+  const logoutLabel = isArabic ? "تسجيل الخروج" : "Log out";
+  return (
   <header className="nav">
     <a className="brand" href="#home">
       <OrbitMark />
@@ -161,10 +165,14 @@ const Header = ({ c, language, onToggleLanguage, onOpenLogin, activeProfile, onO
       </button>
       {activeProfile ? <div className="profile-pill">{activeProfile}</div> : null}
       {isTeacher ? <button className="btn btn-secondary" type="button" onClick={onOpenDashboard}>{c.teacherDashboardButton}</button> : null}
-      <button className="btn btn-primary" type="button" onClick={onOpenLogin}>{c.launchDemo}</button>
+      {activeProfile
+        ? <button className="btn btn-secondary" type="button" onClick={onLogout}>{logoutLabel}</button>
+        : <button className="btn btn-primary" type="button" onClick={onOpenLogin}>{loginLabel}</button>
+      }
     </div>
   </header>
-);
+  );
+};
 
 const HeroSection = ({ c, rotation }) => {
   const heroTags = c.heroTags || [c.liveSimulation, c.aiSignal, c.features?.[1]?.title].filter(Boolean);
@@ -2105,7 +2113,8 @@ const ExperimentSection = ({ c, activeProfile, activeMaterial, setActiveMaterial
                       onClick={() => onOpenQuiz({
                         materialId: currentMaterial.id,
                         materialLabel: currentMaterial.label,
-                        experimentTitle: item.title
+                        experimentTitle: item.title,
+                        experimentIndex: index
                       })}
                     >
                       {c.openQuizButton}
@@ -2390,8 +2399,7 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
 
   const roles = [
     { id: "teacher", title: c.loginRoles.teacher.title, text: c.loginRoles.teacher.text },
-    { id: "student", title: c.loginRoles.student.title, text: c.loginRoles.student.text },
-    { id: "guest", title: c.loginRoles.guest.title, text: c.loginRoles.guest.text }
+    { id: "student", title: c.loginRoles.student.title, text: c.loginRoles.student.text }
   ];
 
   return (
@@ -2400,7 +2408,7 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
         <button className="login-close" type="button" onClick={onClose} aria-label={c.loginClose}>x</button>
         <div className="login-copy">
           <div className="eyebrow login-eyebrow"><span className="eyebrow-dot" aria-hidden="true"></span><span>{c.loginEyebrow}</span></div>
-          <h2 id="login-title">{c.loginTitle}</h2>
+          <h2 id="login-title">{isRegister ? (c.registerTitle || "Create Account") : c.loginTitle}</h2>
           <p>{c.loginText}</p>
         </div>
         <div className="login-role-grid">
@@ -2416,53 +2424,44 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
             </button>
           ))}
         </div>
-        <form className="login-form-card" onSubmit={onSubmit} noValidate={selectedRole === "guest"}>
+        <form className="login-form-card" onSubmit={onSubmit}>
           <div className="login-form-head">
-            <strong>{c.loginRoles[selectedRole].title}</strong>
-            <span>{selectedRole === "guest" ? c.loginGuestNote : c.loginFormNote}</span>
+            <strong>{c.loginRoles[selectedRole]?.title}</strong>
+            <span>{c.loginFormNote}</span>
           </div>
-          <div className={`login-form-grid ${selectedRole === "guest" ? "guest" : "member"}`}>
-            {selectedRole !== "guest" ? (
-              <>
-                <label className="login-field">
-                  <span>{c.loginEmailLabel}</span>
-                  <input type="email" required value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
-                </label>
-                <label className="login-field">
-                  <span>{c.loginPasswordLabel}</span>
-                  <div className="password-field">
-                    <input type={passwordVisible ? "text" : "password"} required minLength="8" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
-                    <button
-                      className="password-toggle"
-                      type="button"
-                      onClick={() => setPasswordVisible((current) => !current)}
-                      aria-label={passwordVisible ? hidePasswordLabel : showPasswordLabel}
-                      title={passwordVisible ? hidePasswordLabel : showPasswordLabel}
-                    >
-                      {passwordVisible ? (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M3 3l18 18" />
-                          <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
-                          <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.91c5 0 9.27 3.11 11 7.5a11.8 11.8 0 0 1-2.27 3.59" />
-                          <path d="M6.61 6.61C4.62 7.9 3.12 9.92 2 12.41c.88 2.19 2.26 4.05 3.95 5.34" />
-                          <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
-                          <circle cx="12" cy="12" r="3" />
-                        </svg>
-                      )}
-                    </button>
-                  </div>
-                </label>
-              </>
-            ) : (
-              <label className="login-field">
-                <span>{c.loginGuestLabel}</span>
-                <input type="text" value={loginForm.purpose} onChange={(event) => setLoginForm({ ...loginForm, purpose: event.target.value })} placeholder={c.loginGuestPlaceholder} />
-              </label>
-            )}
+          <div className="login-form-grid member">
+            <label className="login-field">
+              <span>{c.loginEmailLabel}</span>
+              <input type="email" required value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
+            </label>
+            <label className="login-field">
+              <span>{c.loginPasswordLabel}</span>
+              <div className="password-field">
+                <input type={passwordVisible ? "text" : "password"} required minLength="8" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder={c.loginPasswordPlaceholder} />
+                <button
+                  className="password-toggle"
+                  type="button"
+                  onClick={() => setPasswordVisible((current) => !current)}
+                  aria-label={passwordVisible ? hidePasswordLabel : showPasswordLabel}
+                  title={passwordVisible ? hidePasswordLabel : showPasswordLabel}
+                >
+                  {passwordVisible ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 3l18 18" />
+                      <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                      <path d="M9.88 5.09A10.94 10.94 0 0 1 12 4.91c5 0 9.27 3.11 11 7.5a11.8 11.8 0 0 1-2.27 3.59" />
+                      <path d="M6.61 6.61C4.62 7.9 3.12 9.92 2 12.41c.88 2.19 2.26 4.05 3.95 5.34" />
+                      <path d="M14.12 14.12A3 3 0 0 1 9.88 9.88" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </label>
           </div>
           {loginError ? <div className="login-error" role="alert">{loginError}</div> : null}
           <div className="login-actions">
@@ -2612,7 +2611,7 @@ setDashboardState({
 };
 
 const QUIZ_BANK = {
-  physics: [
+  physics_0: [
     {
       promptAr: "ماذا يحدث للإشارة المستحثة عندما تزيد عدد لفات الملف؟",
       promptEn: "What happens to the induced signal when the number of coil turns increases?",
@@ -2621,14 +2620,30 @@ const QUIZ_BANK = {
       answer: 0
     },
     {
-      promptAr: "في التصادم داخل نظام مغلق، أي كمية تبقى محفوظة دائمًا؟",
-      promptEn: "In a closed-system collision, which quantity stays conserved?",
-      optionsAr: ["الزخم", "اللون", "درجة الحرارة فقط"],
-      optionsEn: ["Momentum", "Color", "Temperature only"],
+      promptAr: "ما الذي يسبب الحث الكهرومغناطيسي؟",
+      promptEn: "What causes electromagnetic induction?",
+      optionsAr: ["تغير المجال المغناطيسي", "ارتفاع درجة الحرارة", "زيادة المقاومة"],
+      optionsEn: ["A changing magnetic field", "Rising temperature", "Increasing resistance"],
       answer: 0
     }
   ],
-  chemistry: [
+  physics_1: [
+    {
+      promptAr: "في التصادم داخل نظام مغلق، أي كمية تبقى محفوظة دائمًا؟",
+      promptEn: "In a closed-system collision, which quantity is always conserved?",
+      optionsAr: ["الزخم", "اللون", "درجة الحرارة فقط"],
+      optionsEn: ["Momentum", "Color", "Temperature only"],
+      answer: 0
+    },
+    {
+      promptAr: "في التصادم المرن، ماذا يحدث للطاقة الحركية؟",
+      promptEn: "In an elastic collision, what happens to kinetic energy?",
+      optionsAr: ["تبقى محفوظة", "تختفي كليًا", "تتحول إلى حرارة"],
+      optionsEn: ["It is conserved", "It disappears completely", "It converts to heat"],
+      answer: 0
+    }
+  ],
+  chemistry_0: [
     {
       promptAr: "ما وظيفة الجسر الملحي في الخلية الغلفانية؟",
       promptEn: "What is the role of the salt bridge in a galvanic cell?",
@@ -2637,14 +2652,30 @@ const QUIZ_BANK = {
       answer: 0
     },
     {
-      promptAr: "متى تكون الخلية الغلفانية أقوى عادة؟",
-      promptEn: "When is a galvanic cell usually stronger?",
-      optionsAr: ["عند وجود قطبين مختلفين", "عند فصل الأسلاك", "عند غياب الجسر الملحي"],
-      optionsEn: ["With different electrodes", "When wires are disconnected", "Without a salt bridge"],
+      promptAr: "متى تكون الخلية الغلفانية أقوى؟",
+      promptEn: "When is a galvanic cell strongest?",
+      optionsAr: ["عند وجود قطبين مختلفين بفرق نشاط كبير", "عند فصل الأسلاك", "عند غياب الجسر الملحي"],
+      optionsEn: ["With two different electrodes and a large reactivity gap", "When wires are disconnected", "Without a salt bridge"],
       answer: 0
     }
   ],
-  biology: [
+  chemistry_1: [
+    {
+      promptAr: "ما الكاشف المستخدم للكشف عن أيون الكلوريد؟",
+      promptEn: "Which reagent is used to detect chloride ions?",
+      optionsAr: ["نترات الفضة AgNO3", "هيدروكسيد الصوديوم NaOH", "كلوريد الباريوم BaCl2"],
+      optionsEn: ["Silver nitrate AgNO3", "Sodium hydroxide NaOH", "Barium chloride BaCl2"],
+      answer: 0
+    },
+    {
+      promptAr: "ما الملاحظة التي تدل على وجود أيون النحاس Cu2+؟",
+      promptEn: "What observation indicates the presence of Cu2+ ions?",
+      optionsAr: ["راسب أزرق مع NaOH", "فقاعات غاز", "راسب أبيض"],
+      optionsEn: ["Blue precipitate with NaOH", "Gas bubbles", "White precipitate"],
+      answer: 0
+    }
+  ],
+  biology_0: [
     {
       promptAr: "أي عامل يدعم عملية البناء الضوئي مباشرة؟",
       promptEn: "Which factor directly supports photosynthesis?",
@@ -2653,10 +2684,26 @@ const QUIZ_BANK = {
       answer: 0
     },
     {
+      promptAr: "ما الغاز الناتج عن عملية البناء الضوئي؟",
+      promptEn: "What gas is produced by photosynthesis?",
+      optionsAr: ["الأكسجين O2", "ثاني أكسيد الكربون CO2", "النيتروجين N2"],
+      optionsEn: ["Oxygen O2", "Carbon dioxide CO2", "Nitrogen N2"],
+      answer: 0
+    }
+  ],
+  biology_1: [
+    {
       promptAr: "في تضاعف DNA، أي قاعدة ترتبط مع A؟",
       promptEn: "During DNA replication, which base pairs with A?",
       optionsAr: ["T", "C", "G"],
       optionsEn: ["T", "C", "G"],
+      answer: 0
+    },
+    {
+      promptAr: "ما الإنزيم المسؤول عن فك لولب DNA؟",
+      promptEn: "Which enzyme is responsible for unwinding the DNA helix?",
+      optionsAr: ["الهيليكاز", "البوليميراز", "الليغاز"],
+      optionsEn: ["Helicase", "Polymerase", "Ligase"],
       answer: 0
     }
   ]
@@ -2665,7 +2712,9 @@ const QUIZ_BANK = {
 const QuizPage = ({ c, quizContext, onBack }) => {
   const isArabic = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
   const materialId = quizContext?.materialId || "physics";
-  const questions = QUIZ_BANK[materialId] || QUIZ_BANK.physics;
+  const experimentIndex = quizContext?.experimentIndex ?? 0;
+  const bankKey = `${materialId}_${experimentIndex}`;
+  const questions = QUIZ_BANK[bankKey] || QUIZ_BANK[`${materialId}_0`] || QUIZ_BANK.physics_0;
   const [answers, setAnswers] = useState({});
   const score = questions.reduce((total, question, index) => total + (answers[index] === question.answer ? 1 : 0), 0);
   const completed = Object.keys(answers).length === questions.length;
