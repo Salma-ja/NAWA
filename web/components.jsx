@@ -2210,6 +2210,20 @@ const FooterSection = ({ c }) => (
   </footer>
 );
 
+/**
+ * The tutor is told never to use markdown, but models slip up occasionally --
+ * render **bold** anyway so a stray slip shows as bold text, not literal
+ * asterisks, instead of relying on prompt compliance alone.
+ */
+function renderMessageContent(text) {
+  const parts = String(text || "").split(/(\*\*[^*\n]+\*\*)/g);
+  return parts.map((part, index) =>
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={index}>{part.slice(2, -2)}</strong>
+      : part
+  );
+}
+
 const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) => {
   const [welcomeVisible, setWelcomeVisible] = useState(true);
   const [draft, setDraft] = useState("");
@@ -2301,7 +2315,7 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) =
               </div>
             ) : messages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`ai-chat-msg ${message.role}`}>
-                <div className="ai-chat-line">{message.content}</div>
+                <div className="ai-chat-line">{renderMessageContent(message.content)}</div>
               </div>
             ))}
             {sending ? (
@@ -2325,6 +2339,7 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) =
                 ref={inputRef}
                 className="ai-chat-field"
                 type="text"
+                dir={draft.trim() ? "auto" : (language === "ar" ? "rtl" : "ltr")}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={c.chatPlaceholder}

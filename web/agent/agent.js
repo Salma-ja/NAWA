@@ -11,9 +11,26 @@
  */
 
 const { LABS, findLab, knowledgeDigest } = require("./lab-knowledge");
+const { logStep, maskSecret } = require("../logger");
 
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const BASE_URL = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
+
+/**
+ * Some providers (eg. Moonshot's reasoning models) reject any temperature but
+ * one fixed value. Setting this skips our own default so we don't burn a
+ * guaranteed-fail request -- and a tight rate limit -- on every single turn.
+ */
+const FIXED_TEMPERATURE = process.env.OPENAI_TEMPERATURE !== undefined
+  ? Number(process.env.OPENAI_TEMPERATURE)
+  : null;
+
+/**
+ * Moonshot's Kimi models default to a slow "thinking" (reasoning) pass before
+ * every answer. Their API turns that off with a top-level `thinking` field --
+ * this app just needs a fast, direct reply, not exposed chain-of-thought.
+ */
+const DISABLE_THINKING = process.env.OPENAI_DISABLE_THINKING === "1" || process.env.OPENAI_DISABLE_THINKING === "true";
 
 /** How many prior turns we keep, so a long session cannot blow up the bill. */
 const MAX_HISTORY_TURNS = 12;
@@ -90,7 +107,7 @@ function buildContextMessage(labContext) {
 
   lines.push(hasSpecificExperiment
     ? "Use these values when the student asks about what they are seeing. Do not recite them otherwise."
-    : "This only tells you the broad subject area. Do not infer a specific experiment from it unless the student names one.");
+    : "This only tells you the broad subject area, and it may just be the app's default view rather than something the student deliberately chose -- do not treat it as a request to limit yourself to that subject. When greeting the student or describing what you can help with in general, mention labs from all three subjects, not only this one. Narrow to one subject only once the student's own message points that way.");
   return lines.join("\n");
 }
 
@@ -104,6 +121,29 @@ function normalizeHistory(history) {
 
 function hasArabic(text) {
   return /[\u0600-\u06FF]/.test(String(text || ""));
+}
+
+/** Script-based detection of one message's language. Null when too short/neutral to tell. */
+function detectMessageLanguage(message) {
+  const text = String(message || "");
+  if (hasArabic(text)) return "ar";
+  const latinLetters = (text.match(/[a-zA-Z]/g) || []).length;
+  if (latinLetters >= 3) return "en";
+  return null;
+}
+
+/**
+ * A forceful, per-turn language directive computed from the actual message
+ * text, not just the client's static session language. The system prompt
+ * already asks the model to match the student's language, but that's a soft
+ * instruction the model can (and sometimes does) ignore -- this makes the
+ * current turn's language an explicit fact instead of something to infer.
+ */
+function buildLanguageDirective(message, language) {
+  const detected = detectMessageLanguage(message);
+  if (!detected || detected === language) return null;
+  const languageName = detected === "ar" ? "Arabic" : "English";
+  return `The student's current message is written in ${languageName}. Reply in ${languageName} for this turn, even if earlier turns or other instructions suggested a different language.`;
 }
 
 function pickLanguage(message, language) {
@@ -160,23 +200,50 @@ function genericLocalReply({ message, labContext, language }) {
   return labSummaryReply({ lang, lab });
 }
 
-async function callOpenAI({ messages, apiKey, model = DEFAULT_MODEL, jsonMode = false, maxTokens = 700 }) {
+async function callOpenAI({ messages, apiKey, model = DEFAULT_MODEL, jsonMode = false, maxTokens = 700, requestId, omitTemperature = false, retriedRateLimit = false, retriedForLength = false }) {
   const body = {
     model,
     messages,
-    temperature: jsonMode ? 0.4 : 0.6,
     max_tokens: maxTokens
   };
+  if (!omitTemperature) {
+    body.temperature = FIXED_TEMPERATURE !== null && !Number.isNaN(FIXED_TEMPERATURE)
+      ? FIXED_TEMPERATURE
+      : (jsonMode ? 0.4 : 0.6);
+  }
   if (jsonMode) body.response_format = { type: "json_object" };
+  if (DISABLE_THINKING) body.thinking = { type: "disabled" };
 
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`
-    },
-    body: JSON.stringify(body)
+  const startedAt = Date.now();
+  logStep("agent", "callOpenAI:request", {
+    requestId,
+    model,
+    baseUrl: BASE_URL,
+    apiKeyPrefix: maskSecret(apiKey),
+    jsonMode,
+    maxTokens,
+    thinkingDisabled: DISABLE_THINKING,
+    messageCount: messages.length
   });
+
+  let response;
+  try {
+    response = await fetch(`${BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(body)
+    });
+  } catch (error) {
+    logStep("agent", "callOpenAI:network_error", {
+      requestId,
+      durationMs: Date.now() - startedAt,
+      message: error.message
+    });
+    throw error;
+  }
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
@@ -184,8 +251,34 @@ async function callOpenAI({ messages, apiKey, model = DEFAULT_MODEL, jsonMode = 
     // Some OpenAI-compatible providers reject response_format outright.
     // Retry once without it -- parseJsonLoosely can still recover the object.
     if (jsonMode && response.status === 400) {
-      return callOpenAI({ messages, apiKey, model, jsonMode: false, maxTokens });
+      logStep("agent", "callOpenAI:retry_without_json_mode", { requestId, status: response.status });
+      return callOpenAI({ messages, apiKey, model, jsonMode: false, maxTokens, requestId, omitTemperature, retriedRateLimit, retriedForLength });
     }
+
+    // Some models (eg. reasoning models) only accept their own fixed temperature.
+    // Retry once letting the provider default apply instead of our custom value.
+    if (!omitTemperature && response.status === 400 && /temperature/i.test(detail)) {
+      logStep("agent", "callOpenAI:retry_without_temperature", { requestId, status: response.status });
+      return callOpenAI({ messages, apiKey, model, jsonMode, maxTokens, requestId, omitTemperature: true, retriedRateLimit, retriedForLength });
+    }
+
+    // A tight per-minute cap can trip on ordinary back-to-back messages.
+    // The provider tells us how long to wait -- one short retry beats an
+    // immediate fallback to the canned local reply.
+    if (!retriedRateLimit && response.status === 429) {
+      const waitSeconds = Number(detail.match(/after (\d+(?:\.\d+)?) second/i)?.[1]) || 1.5;
+      const waitMs = Math.min(waitSeconds * 1000 + 300, 5000);
+      logStep("agent", "callOpenAI:retry_after_rate_limit", { requestId, status: response.status, waitMs });
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      return callOpenAI({ messages, apiKey, model, jsonMode, maxTokens, requestId, omitTemperature, retriedRateLimit: true, retriedForLength });
+    }
+
+    logStep("agent", "callOpenAI:error_response", {
+      requestId,
+      status: response.status,
+      durationMs: Date.now() - startedAt,
+      detail: detail.slice(0, 300)
+    });
 
     const error = new Error(`Chat completion request failed (${response.status})`);
     error.status = response.status;
@@ -194,7 +287,37 @@ async function callOpenAI({ messages, apiKey, model = DEFAULT_MODEL, jsonMode = 
   }
 
   const payload = await response.json();
-  return payload.choices?.[0]?.message?.content?.trim() || "";
+  const choice = payload.choices?.[0];
+  const content = choice?.message?.content?.trim() || "";
+
+  // Reasoning models can spend the whole token budget thinking and leave
+  // nothing for the visible answer. Retry once with more room rather than
+  // silently returning an empty reply.
+  if (!content && choice?.finish_reason === "length" && !retriedForLength) {
+    const nextMaxTokens = Math.min(maxTokens * 2, 16000);
+    logStep("agent", "callOpenAI:retry_after_empty_length", { requestId, maxTokens, nextMaxTokens });
+    return callOpenAI({ messages, apiKey, model, jsonMode, maxTokens: nextMaxTokens, requestId, omitTemperature, retriedRateLimit, retriedForLength: true });
+  }
+
+  // Still nothing after a retry (or an empty reply for some other reason) --
+  // an empty string is never a useful answer, so treat it as a failure and
+  // let the caller fall back to the canned local reply instead of a blank bubble.
+  if (!content) {
+    logStep("agent", "callOpenAI:empty_content", { requestId, finishReason: choice?.finish_reason });
+    const error = new Error("Provider returned an empty reply.");
+    error.status = 502;
+    throw error;
+  }
+
+  logStep("agent", "callOpenAI:success", {
+    requestId,
+    status: response.status,
+    durationMs: Date.now() - startedAt,
+    finishReason: choice?.finish_reason,
+    replyLength: content.length
+  });
+
+  return content;
 }
 
 /** Builds the message array for a chat turn, shared by both transports. */
@@ -204,6 +327,9 @@ function buildChatMessages({ message, history, labContext, language }) {
   const context = buildContextMessage(labContext);
   if (context) messages.push({ role: "system", content: context });
 
+  const languageDirective = buildLanguageDirective(message, language);
+  if (languageDirective) messages.push({ role: "system", content: languageDirective });
+
   messages.push(...normalizeHistory(history));
   messages.push({ role: "user", content: String(message).slice(0, MAX_MESSAGE_CHARS) });
 
@@ -211,9 +337,15 @@ function buildChatMessages({ message, history, labContext, language }) {
 }
 
 /** One chat turn. `history` carries the earlier turns so follow-ups resolve. */
-async function askTutor({ message, history, labContext, language, apiKey, model }) {
+async function askTutor({ message, history, labContext, language, apiKey, model, requestId }) {
+  logStep("agent", "askTutor:prompt_built", {
+    requestId,
+    historyTurns: normalizeHistory(history).length,
+    hasLabContext: Boolean(labContext),
+    language
+  });
   const messages = buildChatMessages({ message, history, labContext, language });
-  return callOpenAI({ messages, apiKey, model, maxTokens: 700 });
+  return callOpenAI({ messages, apiKey, model, maxTokens: 6000, requestId });
 }
 
 /**
@@ -312,7 +444,8 @@ function parseJsonLoosely(raw) {
 const QUIZ_CONTRACT = `Respond with a single JSON object holding one key, "questions": an array of question objects. Each question object has "prompt" (string), "options" (array of exactly 3 strings), "answer" (integer, the 0-based index into options of the correct one) and "explanation" (one short sentence saying why it is correct). Every string must be written in the requested language.`;
 
 /** Generates a quiz grounded in one specific lab. */
-async function generateQuiz({ materialId, experimentIndex, experimentTitle, language, count = 3, apiKey, model }) {
+async function generateQuiz({ materialId, experimentIndex, experimentTitle, language, count = 3, apiKey, model, requestId }) {
+  logStep("agent", "generateQuiz:start", { requestId, materialId, experimentIndex, experimentTitle, language, count });
   const lab = findLab(materialId, experimentIndex);
   const languageName = language === "ar" ? "Arabic" : "English";
 
@@ -336,10 +469,13 @@ async function generateQuiz({ materialId, experimentIndex, experimentTitle, lang
     }
   ];
 
-  const raw = await callOpenAI({ messages, apiKey, model, jsonMode: true, maxTokens: 900 });
+  const raw = await callOpenAI({ messages, apiKey, model, jsonMode: true, maxTokens: 8000, requestId });
 
   const parsed = parseJsonLoosely(raw);
-  if (!parsed) throw new Error("The model did not return valid quiz JSON.");
+  if (!parsed) {
+    logStep("agent", "generateQuiz:parse_failed", { requestId });
+    throw new Error("The model did not return valid quiz JSON.");
+  }
 
   const questions = Array.isArray(parsed.questions) ? parsed.questions : [];
   const clean = questions
@@ -354,7 +490,12 @@ async function generateQuiz({ materialId, experimentIndex, experimentTitle, lang
       };
     });
 
-  if (!clean.length) throw new Error("The model returned no usable questions.");
+  if (!clean.length) {
+    logStep("agent", "generateQuiz:no_usable_questions", { requestId });
+    throw new Error("The model returned no usable questions.");
+  }
+
+  logStep("agent", "generateQuiz:success", { requestId, questionCount: clean.length });
   return clean;
 }
 

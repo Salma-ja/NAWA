@@ -24,6 +24,19 @@ function loadEnvFile() {
 
 loadEnvFile();
 const { askTutor, generateQuiz, genericLocalReply } = require("./agent/agent");
+const { logStep, maskSecret } = require("./logger");
+
+process.on("uncaughtException", (error) => {
+  logStep("process", "uncaught_exception", { message: error.message, stack: error.stack });
+  console.error("Uncaught exception, shutting down:", error);
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  const error = reason instanceof Error ? reason : new Error(String(reason));
+  logStep("process", "unhandled_rejection", { message: error.message, stack: error.stack });
+  console.error("Unhandled rejection:", error);
+});
 
 const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 4174);
@@ -273,23 +286,34 @@ async function handleRegister(req, res) {
 }
 
 async function handleChat(req, res) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
+
   try {
     const body = await readJsonBody(req);
     const message = String(body.message || "").trim();
+    const history = Array.isArray(body.history) ? body.history : [];
+    const labContext = body.labContext || null;
+    const language = getRequestLanguage(body);
+
+    logStep("chat", "request_received", {
+      requestId,
+      messageLength: message.length,
+      historyLength: history.length,
+      hasLabContext: Boolean(labContext),
+      language
+    });
 
     if (!message) {
+      logStep("chat", "validation_failed", { requestId, reason: "empty_message" });
       sendJson(res, 400, { message: "Enter a message first." });
       return;
     }
 
     if (!process.env.OPENAI_API_KEY) {
+      logStep("chat", "fallback_no_api_key", { requestId });
       sendJson(res, 200, {
-        reply: genericLocalReply({
-          message,
-          history: Array.isArray(body.history) ? body.history : [],
-          labContext: body.labContext || null,
-          language: getRequestLanguage(body)
-        }),
+        reply: genericLocalReply({ message, history, labContext, language }),
         fallback: true
       });
       return;
@@ -298,52 +322,85 @@ async function handleChat(req, res) {
     try {
       const reply = await askTutor({
         message,
-        history: Array.isArray(body.history) ? body.history : [],
-        labContext: body.labContext || null,
-        language: getRequestLanguage(body),
+        history,
+        labContext,
+        language,
         apiKey: process.env.OPENAI_API_KEY,
-        model: process.env.OPENAI_MODEL
+        model: process.env.OPENAI_MODEL,
+        requestId
       });
 
+      logStep("chat", "response_sent", { requestId, statusCode: 200, durationMs: Date.now() - startedAt });
       sendJson(res, 200, { reply });
     } catch (error) {
+      logStep("chat", "provider_error_fallback", {
+        requestId,
+        status: error.status || 500,
+        message: error.message,
+        durationMs: Date.now() - startedAt
+      });
       sendJson(res, 200, {
-        reply: genericLocalReply({
-          message,
-          history: Array.isArray(body.history) ? body.history : [],
-          labContext: body.labContext || null,
-          language: getRequestLanguage(body)
-        }),
+        reply: genericLocalReply({ message, history, labContext, language }),
         fallback: true,
         providerError: error.status || 500
       });
     }
   } catch (error) {
+    logStep("chat", "request_failed", {
+      requestId,
+      status: error.status || 500,
+      message: error.message,
+      durationMs: Date.now() - startedAt
+    });
     sendJson(res, error.status || 500, { message: error.message || "Could not reach the tutor." });
   }
 }
 
 async function handleQuiz(req, res) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
+
   try {
     const body = await readJsonBody(req);
+    const materialId = body.materialId || "physics";
+    const language = getRequestLanguage(body);
+    const count = Number.isInteger(body.count) ? body.count : 3;
+
+    logStep("quiz", "request_received", {
+      requestId,
+      materialId,
+      experimentIndex: body.experimentIndex,
+      experimentTitle: body.experimentTitle,
+      language,
+      count
+    });
 
     if (!process.env.OPENAI_API_KEY) {
+      logStep("quiz", "rejected_no_api_key", { requestId });
       sendJson(res, 503, { message: "The quiz generator is not connected yet. Add OPENAI_API_KEY to web/.env and restart the server." });
       return;
     }
 
     const questions = await generateQuiz({
-      materialId: body.materialId || "physics",
+      materialId,
       experimentIndex: body.experimentIndex,
       experimentTitle: body.experimentTitle,
-      language: getRequestLanguage(body),
-      count: Number.isInteger(body.count) ? body.count : 3,
+      language,
+      count,
       apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.OPENAI_MODEL
+      model: process.env.OPENAI_MODEL,
+      requestId
     });
 
+    logStep("quiz", "response_sent", { requestId, statusCode: 200, durationMs: Date.now() - startedAt });
     sendJson(res, 200, { questions });
   } catch (error) {
+    logStep("quiz", "request_failed", {
+      requestId,
+      status: error.status || 500,
+      message: error.message,
+      durationMs: Date.now() - startedAt
+    });
     sendJson(res, error.status || 500, { message: error.message || "Could not generate the quiz." });
   }
 }
@@ -452,4 +509,11 @@ http.createServer((req, res) => {
   });
 }).listen(port, host, () => {
   console.log(`NAWA web server running at http://${host}:${port}`);
+  logStep("server", "startup", {
+    port,
+    host,
+    baseUrl: process.env.OPENAI_BASE_URL || "https://api.openai.com/v1",
+    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    apiKeyPrefix: maskSecret(process.env.OPENAI_API_KEY)
+  });
 });
