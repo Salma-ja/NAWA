@@ -7,6 +7,8 @@ services:
     startCommand: npm start
     healthCheckPath: /api/status
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: NODE_VERSION
         value: 24.11.0
       - key: OPENAI_API_KEY
@@ -15,3 +17,5 @@ services:
         value: gpt-4o-mini
       - key: NAWA_TEACHER_ACCESS_CODE
         value: NAWA-TEACHER-2026
+      - key: NAWA_DATA_DIR
+        value: /opt/render/project/src/web/data

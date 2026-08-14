@@ -137,6 +137,27 @@ On start-up the server prints whether the tutor is connected. `web/.env` is git-
 | `OPENAI_MODEL` | `gpt-4o-mini` | Any chat-completions model. `gpt-4o` is noticeably more accurate, especially in Arabic. |
 | `OPENAI_BASE_URL` | OpenAI | Only change for Azure OpenAI or a compatible proxy. |
 | `PORT` | `4174` | Server port. |
+| `NAWA_DATA_DIR` | `web/data` | Where local account data is stored. Useful when mounting persistent storage in production. |
+
+## Deploy On Render
+
+This repo is now prepared for a Render web service through the root `render.yaml`.
+
+### Recommended setup
+
+- Create the service from Render using the repo's `render.yaml`.
+- Add `OPENAI_API_KEY` in the Render dashboard.
+- Keep `OPENAI_MODEL=gpt-4o-mini` unless you want a different supported model.
+- Health check path: `/api/status`
+
+### Important note about accounts
+
+User accounts are currently stored in a local JSON file.
+
+- On Render Free, the filesystem is ephemeral, so accounts can disappear after a restart or redeploy.
+- For a real deployment, attach a persistent disk on a paid Render web service and mount it at `/opt/render/project/src/web/data`, or move auth storage to a managed database.
+
+The current `render.yaml` already points `NAWA_DATA_DIR` to that path so the app is ready for a disk without extra code changes.
 
 ### How the tutor works
 

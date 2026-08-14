@@ -29,8 +29,12 @@ const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 4174);
 const root = __dirname;
 const teacherAccessCode = process.env.NAWA_TEACHER_ACCESS_CODE || "NAWA-TEACHER-2026";
-const dataDir = path.join(root, "data");
-const usersFile = path.join(dataDir, "users.json");
+const dataDir = process.env.NAWA_DATA_DIR
+  ? path.resolve(process.env.NAWA_DATA_DIR)
+  : path.join(root, "data");
+const usersFile = process.env.NAWA_USERS_FILE
+  ? path.resolve(process.env.NAWA_USERS_FILE)
+  : path.join(dataDir, "users.json");
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
