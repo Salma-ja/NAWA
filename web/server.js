@@ -25,7 +25,7 @@ function loadEnvFile() {
 loadEnvFile();
 const { askTutor, generateQuiz, genericLocalReply } = require("./agent/agent");
 
-const host = "127.0.0.1";
+const host = process.env.HOST || "0.0.0.0";
 const port = Number(process.env.PORT || 4174);
 const root = __dirname;
 const teacherAccessCode = process.env.NAWA_TEACHER_ACCESS_CODE || "NAWA-TEACHER-2026";

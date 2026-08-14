@@ -1,0 +1,17 @@
+services:
+  - name: nawa-lab
+    type: web
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/status
+    envVars:
+      - key: NODE_VERSION
+        value: 24.11.0
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: NAWA_TEACHER_ACCESS_CODE
+        value: NAWA-TEACHER-2026

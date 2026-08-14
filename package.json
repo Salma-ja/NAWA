@@ -3,7 +3,11 @@
   "private": true,
   "version": "1.0.0",
   "scripts": {
-    "build": "vite build"
+    "build": "vite build",
+    "start": "node web/server.js"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "devDependencies": {
     "vite": "^7.1.3"
