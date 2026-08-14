@@ -280,31 +280,28 @@ function App() {
 
     
 const endpoint = authMode === "register"
-  ? "https://nawa-1.onrender.com/register"
-  : "https://nawa-1.onrender.com/login";
+  ? "/api/auth/register"
+  : "/api/auth/login";
 const response = await fetch(endpoint, {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload)
 });
-const result = await response.json();
+const result = await response.json().catch(() => ({}));
 if (!response.ok) {
-  setLoginError(result.error || c.loginErrorGeneric);
+  setLoginError(result.message || result.error || c.loginErrorGeneric);
   return;
 }
 
 // Enforce role match — teacher can't log in from student portal and vice versa
-if (authMode === "login" && result.role !== selectedRole) {
-  setLoginError(
-    selectedRole === "teacher"
-      ? "This account is not a teacher account."
-      : "This account is not a student account."
-  );
+const profile = result.profile || { name: result.name, role: result.role, email: payload.email };
+if (!profile?.name || !profile?.role) {
+  setLoginError(c.loginErrorGeneric);
   return;
 }
 
-setActiveProfile({ name: result.name, role: result.role });
-setAuthToken(result.token);
+setActiveProfile(profile);
+setAuthToken(result.token || "");
       setCurrentView("home");
       setLoginOpen(false);
       setAuthMode("login");

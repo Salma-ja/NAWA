@@ -56,46 +56,7 @@ const FeatureIcon = ({ type }) => {
 
 const OrbitMark = () => (
   <span className="brand-mark">
-    <svg className="brand-logo-svg" viewBox="0 0 64 64" aria-hidden="true">
-      <defs>
-        <radialGradient id="nawaCoreGlow" cx="50%" cy="50%" r="62%">
-          <stop offset="0%" stopColor="rgba(139, 116, 255, 0.95)" />
-          <stop offset="55%" stopColor="rgba(85, 137, 255, 0.62)" />
-          <stop offset="100%" stopColor="rgba(85, 137, 255, 0)" />
-        </radialGradient>
-        <radialGradient id="nawaCoreFill" cx="36%" cy="32%" r="75%">
-          <stop offset="0%" stopColor="#8dc3ff" />
-          <stop offset="35%" stopColor="#6f93ff" />
-          <stop offset="100%" stopColor="#6857f5" />
-        </radialGradient>
-        <linearGradient id="nawaOrbitBlue" x1="10%" y1="10%" x2="90%" y2="90%">
-          <stop offset="0%" stopColor="#53a7ff" />
-          <stop offset="100%" stopColor="#1e66dd" />
-        </linearGradient>
-        <linearGradient id="nawaOrbitViolet" x1="0%" y1="50%" x2="100%" y2="50%">
-          <stop offset="0%" stopColor="#7d4cff" />
-          <stop offset="100%" stopColor="#5a39df" />
-        </linearGradient>
-      </defs>
-      <rect x="1.5" y="1.5" width="61" height="61" rx="16" className="brand-logo-frame" />
-      <circle cx="32" cy="33" r="15" fill="url(#nawaCoreGlow)" className="brand-logo-glow" />
-      <g className="brand-core-shell">
-        <ellipse cx="32" cy="33" rx="10.5" ry="10.8" fill="url(#nawaCoreFill)" className="brand-core-body" />
-        <ellipse cx="30.4" cy="29.4" rx="3.1" ry="4.8" fill="rgba(255,255,255,0.16)" className="brand-core-shine" />
-      </g>
-      <g className="brand-orbit-blue">
-        <ellipse cx="31.5" cy="33" rx="20" ry="8.4" transform="rotate(-42 31.5 33)" fill="none" stroke="url(#nawaOrbitBlue)" strokeWidth="1.55" />
-        <circle cx="17.2" cy="27.9" r="1.2" fill="#6aa8ff" />
-      </g>
-      <g className="brand-orbit-violet">
-        <ellipse cx="31.6" cy="32.6" rx="17.4" ry="8.1" transform="rotate(29 31.6 32.6)" fill="none" stroke="url(#nawaOrbitViolet)" strokeWidth="1.55" />
-        <circle cx="44.5" cy="37.6" r="1.15" fill="#9b7cf5" />
-      </g>
-      <g className="brand-orbit-inner">
-        <ellipse cx="31.7" cy="33" rx="6" ry="12" fill="none" stroke="rgba(112,165,255,0.56)" strokeWidth="1.15" />
-        <circle cx="40.3" cy="20.5" r="0.9" fill="#3e7def" />
-      </g>
-    </svg>
+    <img className="brand-logo-image" src="./nawa-logo.png" alt="NAWA logo" />
   </span>
 );
 
@@ -2332,13 +2293,7 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) =
             <div className="ai-chat-mini-name">{c.chatName}</div>
             <button className="ai-chat-close" onClick={() => setChatOpen(false)} aria-label={c.chatCloseLabel || "Close chat"} type="button">×</button>
           </div>
-          <div className="ai-chat-bubble ai-chat-bubble-intro">{language === "ar" ? 'أهلا! أنا جريب' : 'Hi! I am Jarreeb'}<br />{c.chatIntroText}</div>
-          <div className="ai-chat-bubble">{c.chatMessage}</div>
-          <div className="ai-chat-section-label">{c.chatLabel}</div>
-          <div className="ai-chat-actions">
-            <button className="ai-chat-action" type="button" onClick={() => sendMessage(c.chatPrimary)}><span>{c.chatPrimary}</span><span className="ai-chat-action-arrow">{">"}</span></button>
-            <button className="ai-chat-action" type="button" onClick={() => sendMessage(c.chatSecondary)}><span>{c.chatSecondary}</span><span className="ai-chat-action-arrow">{">"}</span></button>
-          </div>
+          <div className="ai-chat-bubble ai-chat-bubble-intro">{c.chatIntroTitle}<br />{c.chatIntroText}</div>
           <div className="ai-chat-scroll" ref={scrollRef}>
             {messages.length === 0 ? (
               <div className="ai-chat-msg assistant">
@@ -2429,7 +2384,19 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
             <strong>{c.loginRoles[selectedRole]?.title}</strong>
             <span>{c.loginFormNote}</span>
           </div>
-          <div className="login-form-grid member">
+          <div className={`login-form-grid ${isRegister ? "register" : "member"}`}>
+            {isRegister ? (
+              <label className="login-field">
+                <span>{c.loginNameLabel || (document.documentElement?.dir === "rtl" ? "الاسم" : "Name")}</span>
+                <input
+                  type="text"
+                  required
+                  value={loginForm.name || ""}
+                  onChange={(event) => setLoginForm({ ...loginForm, name: event.target.value })}
+                  placeholder={c.loginNamePlaceholder || (document.documentElement?.dir === "rtl" ? "أدخل الاسم الكامل" : "Enter full name")}
+                />
+              </label>
+            ) : null}
             <label className="login-field">
               <span>{c.loginEmailLabel}</span>
               <input type="email" required value={loginForm.email} onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })} placeholder={c.loginEmailPlaceholder} />
@@ -2462,19 +2429,31 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
                 </button>
               </div>
             </label>
+            {isRegister && selectedRole === "teacher" ? (
+              <label className="login-field">
+                <span>{c.loginTeacherAccessCodeLabel || (document.documentElement?.dir === "rtl" ? "رمز وصول المعلم" : "Teacher access code")}</span>
+                <input
+                  type="text"
+                  required
+                  value={loginForm.teacherAccessCode || ""}
+                  onChange={(event) => setLoginForm({ ...loginForm, teacherAccessCode: event.target.value })}
+                  placeholder={c.loginTeacherAccessCodePlaceholder || (document.documentElement?.dir === "rtl" ? "أدخل رمز وصول المعلم" : "Enter teacher access code")}
+                />
+              </label>
+            ) : null}
           </div>
           {loginError ? <div className="login-error" role="alert">{loginError}</div> : null}
           <div className="login-actions">
             <button className="btn btn-secondary" type="button" onClick={onClose}>{c.loginCancel}</button>
             <button className="btn btn-primary" type="submit" disabled={loginSubmitting}>{loginSubmitting ? c.loginSubmitting : c.loginContinue}</button>
           </div>
-         <div className="login-helper">
-  {isRegister ? (
-    <span>لديك حساب؟ <button type="button" style={{background:"none",border:"none",color:"var(--accent)",cursor:"pointer",padding:0}} onClick={() => setAuthMode("login")}>تسجيل الدخول</button></span>
-  ) : (
-    <span>{selectedRole === "guest" ? c.loginGuestHelper : c.loginMemberHelper} <button type="button" style={{background:"none",border:"none",color:"var(--accent)",cursor:"pointer",padding:0}} onClick={() => setAuthMode("register")}>إنشاء حساب جديد</button></span>
-  )}
-</div>
+          <div className="login-helper">
+            {isRegister ? (
+              <span>لديك حساب؟ <button type="button" className="login-helper-cta" onClick={() => setAuthMode("login")}>تسجيل الدخول</button></span>
+            ) : (
+              <span>{c.loginMemberHelper} <button type="button" className="login-helper-cta" onClick={() => setAuthMode("register")}>إنشاء حساب جديد</button></span>
+            )}
+          </div>
         </form>
       </div>
     </div>

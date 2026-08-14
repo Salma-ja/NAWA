@@ -23,7 +23,7 @@ function loadEnvFile() {
 }
 
 loadEnvFile();
-const { askTutor, generateQuiz } = require("./agent/agent");
+const { askTutor, generateQuiz, genericLocalReply } = require("./agent/agent");
 
 const host = "127.0.0.1";
 const port = Number(process.env.PORT || 4174);
@@ -279,20 +279,41 @@ async function handleChat(req, res) {
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      sendJson(res, 503, { message: "The tutor is not connected yet. Add OPENAI_API_KEY to web/.env and restart the server." });
+      sendJson(res, 200, {
+        reply: genericLocalReply({
+          message,
+          history: Array.isArray(body.history) ? body.history : [],
+          labContext: body.labContext || null,
+          language: getRequestLanguage(body)
+        }),
+        fallback: true
+      });
       return;
     }
 
-    const reply = await askTutor({
-      message,
-      history: Array.isArray(body.history) ? body.history : [],
-      labContext: body.labContext || null,
-      language: getRequestLanguage(body),
-      apiKey: process.env.OPENAI_API_KEY,
-      model: process.env.OPENAI_MODEL
-    });
+    try {
+      const reply = await askTutor({
+        message,
+        history: Array.isArray(body.history) ? body.history : [],
+        labContext: body.labContext || null,
+        language: getRequestLanguage(body),
+        apiKey: process.env.OPENAI_API_KEY,
+        model: process.env.OPENAI_MODEL
+      });
 
-    sendJson(res, 200, { reply });
+      sendJson(res, 200, { reply });
+    } catch (error) {
+      sendJson(res, 200, {
+        reply: genericLocalReply({
+          message,
+          history: Array.isArray(body.history) ? body.history : [],
+          labContext: body.labContext || null,
+          language: getRequestLanguage(body)
+        }),
+        fallback: true,
+        providerError: error.status || 500
+      });
+    }
   } catch (error) {
     sendJson(res, error.status || 500, { message: error.message || "Could not reach the tutor." });
   }

@@ -10,7 +10,7 @@
  * matching gets both of those wrong.
  */
 
-const { findLab, knowledgeDigest } = require("./lab-knowledge");
+const { LABS, findLab, knowledgeDigest } = require("./lab-knowledge");
 
 const DEFAULT_MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const BASE_URL = (process.env.OPENAI_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
@@ -41,7 +41,7 @@ Anything outside that, decline politely. Do it in one short friendly sentence, t
 ## This is a conversation
 You receive the earlier turns. Treat the exchange as continuous. A short or elliptical message is normally a follow-up about what you were both just discussing, so resolve it against the history before deciding what it means. Only treat a message as a new topic when it clearly introduces one.
 
-Answer clear science questions immediately. If a message names a concept, quantity, piece of equipment or process that belongs to any of the labs below, that is enough to identify what the student means -- answer it, and do not ask which lab they are in. The student may ask about any lab at any time, whatever they currently have open. Ask a clarifying question only in the narrow case where a short follow-up cannot be resolved from the history at all, and even then ask exactly one, briefly.
+Answer clear science questions immediately. If a message names a concept, quantity, piece of equipment or process that belongs to any of the labs below, that is enough to identify what the student means -- answer it, and do not ask which lab they are in. The student may ask about any lab at any time, whatever they currently have open. If the live context names only a broad subject such as physics, chemistry or biology, but does not identify one specific experiment, do not assume a particular lab from that subject. In that case answer generally, or ask one brief clarifying question only if the request truly depends on which experiment they mean.
 
 ## Arabic and English are equal
 NAWA students work in both languages, and most of them study science in Arabic. The lab notes below are written in English purely for your reference. Arabic scientific vocabulary refers to exactly the same equipment, quantities and processes, so translate the student's wording into the matching concept before you judge whether it is in scope. An Arabic question is never unclear merely because it is Arabic, and you must never ask a student to repeat themselves in English.
@@ -72,14 +72,15 @@ function buildContextMessage(labContext) {
   const { materialId, materialLabel, experimentTitle, experimentIndex, state } = labContext;
   if (!materialId && !experimentTitle) return null;
 
-  const lab = findLab(materialId, experimentIndex);
+  const hasSpecificExperiment = typeof experimentIndex === "number" || (typeof experimentTitle === "string" && experimentTitle.trim());
+  const lab = hasSpecificExperiment ? findLab(materialId, experimentIndex) : null;
   const lines = ["Live context -- what the student currently has open in NAWA LAB:"];
 
   if (materialLabel) lines.push(`Subject: ${materialLabel}`);
   if (experimentTitle) lines.push(`Experiment: ${experimentTitle}`);
   if (lab) lines.push(`This is the "${lab.titleEn}" lab.`);
 
-  if (state && typeof state === "object") {
+  if (hasSpecificExperiment && state && typeof state === "object") {
     const readable = Object.entries(state)
       .filter(([, value]) => value !== null && value !== undefined && typeof value !== "object")
       .map(([key, value]) => `${key} = ${value}`)
@@ -87,7 +88,9 @@ function buildContextMessage(labContext) {
     if (readable) lines.push(`Current settings and readings: ${readable}`);
   }
 
-  lines.push("Use these values when the student asks about what they are seeing. Do not recite them otherwise.");
+  lines.push(hasSpecificExperiment
+    ? "Use these values when the student asks about what they are seeing. Do not recite them otherwise."
+    : "This only tells you the broad subject area. Do not infer a specific experiment from it unless the student names one.");
   return lines.join("\n");
 }
 
@@ -97,6 +100,64 @@ function normalizeHistory(history) {
     .filter((item) => item && (item.role === "user" || item.role === "assistant") && typeof item.content === "string")
     .map((item) => ({ role: item.role, content: item.content.slice(0, MAX_MESSAGE_CHARS) }))
     .slice(-MAX_HISTORY_TURNS);
+}
+
+function hasArabic(text) {
+  return /[\u0600-\u06FF]/.test(String(text || ""));
+}
+
+function pickLanguage(message, language) {
+  if (language === "ar" || language === "en") return language;
+  return hasArabic(message) ? "ar" : "en";
+}
+
+function looksLikeGreeting(message, lang) {
+  const text = String(message || "").trim().toLowerCase();
+  if (!text) return true;
+  const arabicGreetings = ["مرحبا", "اهلا", "أهلا", "هاي", "السلام", "كيفك"];
+  const englishGreetings = ["hi", "hello", "hey", "good morning", "good evening"];
+  return (lang === "ar" ? arabicGreetings : englishGreetings).some((token) => text.includes(token));
+}
+
+function broadSubjectReply({ lang, materialLabel }) {
+  return lang === "ar"
+    ? `أقدر أساعدك في ${materialLabel || "هذه المادة"}، لكنك لم تحدد تجربة بعينها بعد. اذكر اسم التجربة أو اسأل سؤالك مباشرة وسأشرحها لك بسرعة.`
+    : `I can help with ${materialLabel || "this subject"}, but you have not named a specific experiment yet. Tell me the experiment name or ask your question directly and I will explain it clearly.`;
+}
+
+function labSummaryReply({ lang, lab }) {
+  if (!lab) {
+    return lang === "ar"
+      ? "أقدر أشرح الفكرة أو أساعدك بخطوة العمل التالية. اذكر اسم التجربة أو ما الذي تريد فهمه بالضبط."
+      : "I can explain the idea or help with the next step. Tell me the experiment name or what exactly you want to understand.";
+  }
+
+  const concept = lab.concepts?.[0] || "";
+  const misconception = lab.misconceptions?.[0] || "";
+  return lang === "ar"
+    ? `هذه التجربة تتعلق بـ ${lab.titleAr || lab.titleEn}. الفكرة الأساسية: ${concept} ${misconception ? `وانتبه: ${misconception}` : ""}`.trim()
+    : `This lab is about ${lab.titleEn}. Core idea: ${concept}${misconception ? ` Watch out for this common mistake: ${misconception}` : ""}`;
+}
+
+function genericLocalReply({ message, labContext, language }) {
+  const lang = pickLanguage(message, language);
+  const hasSpecificExperiment = Boolean(
+    typeof labContext?.experimentIndex === "number" ||
+    (typeof labContext?.experimentTitle === "string" && labContext.experimentTitle.trim())
+  );
+
+  if (looksLikeGreeting(message, lang)) {
+    return lang === "ar"
+      ? "أهلاً! اكتب سؤالك العلمي مباشرة، أو اذكر اسم التجربة، وسأساعدك في الفكرة أو الخطوة التالية."
+      : "Hi! Ask your science question directly, or name the experiment, and I will help with the idea or the next step.";
+  }
+
+  if (!hasSpecificExperiment) {
+    return broadSubjectReply({ lang, materialLabel: labContext?.materialLabel });
+  }
+
+  const lab = findLab(labContext?.materialId, labContext?.experimentIndex);
+  return labSummaryReply({ lang, lab });
 }
 
 async function callOpenAI({ messages, apiKey, model = DEFAULT_MODEL, jsonMode = false, maxTokens = 700 }) {
@@ -297,4 +358,4 @@ async function generateQuiz({ materialId, experimentIndex, experimentTitle, lang
   return clean;
 }
 
-module.exports = { askTutor, streamTutor, generateQuiz, buildSystemPrompt, DEFAULT_MODEL };
+module.exports = { askTutor, streamTutor, generateQuiz, buildSystemPrompt, genericLocalReply, DEFAULT_MODEL };
