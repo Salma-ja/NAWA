@@ -8,7 +8,8 @@
     cp web/content-overrides.js dist/content-overrides.js &&
     cp web/content-agent.js dist/content-agent.js &&
     cp web/components.jsx dist/components.jsx &&
-    cp web/app.jsx dist/app.jsx
+    cp web/app.jsx dist/app.jsx &&
+    cp web/nawa-logo.png dist/nawa-logo.png
   """
   publish = "dist"
 

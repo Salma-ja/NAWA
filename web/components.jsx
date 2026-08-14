@@ -56,7 +56,7 @@ const FeatureIcon = ({ type }) => {
 
 const OrbitMark = () => (
   <span className="brand-mark brand-mark-image">
-    <img className="brand-logo-image" src="./nawa-logo.png" alt="NAWA logo" />
+    <img className="brand-logo-image" src="/nawa-logo.png" alt="NAWA logo" />
   </span>
 );
 
