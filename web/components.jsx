@@ -2361,7 +2361,9 @@ const ChatWidget = ({ c, chatOpen, setChatOpen, labContext, language = "ar" }) =
   );
 };
 
-const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {  const [passwordVisible, setPasswordVisible] = useState(false);
+const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSelectedRole, loginForm, setLoginForm, loginError, loginSubmitting, onClose, onSubmit }) => {  
+  const isArabic = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const showPasswordLabel = c.loginPasswordToggleShow || "إظهار كلمة المرور";
   const hidePasswordLabel = c.loginPasswordToggleHide || "إخفاء كلمة المرور";
   const isRegister = authMode === "register";                                                                                                                                                                        
@@ -2464,9 +2466,9 @@ const LoginPortal = ({ c, loginOpen, authMode, setAuthMode, selectedRole, setSel
           </div>
           <div className="login-helper">
             {isRegister ? (
-              <span>لديك حساب؟ <button type="button" className="login-helper-cta" onClick={() => setAuthMode("login")}>تسجيل الدخول</button></span>
+              <span>{isArabic ? "لديك حساب؟" : "Do you have an account?"} <button type="button" className="login-helper-cta" onClick={() => setAuthMode("login")}>{isArabic ? "تسجيل الدخول" : "Log in"}</button></span>
             ) : (
-              <span>{c.loginMemberHelper} <button type="button" className="login-helper-cta" onClick={() => setAuthMode("register")}>إنشاء حساب جديد</button></span>
+              <span>{c.loginMemberHelper} <button type="button" className="login-helper-cta" onClick={() => setAuthMode("register")}>{isArabic ? "إنشاء حساب جديد" : "Create new account"}</button></span>
             )}
           </div>
         </form>
