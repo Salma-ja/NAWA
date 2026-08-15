@@ -280,8 +280,8 @@ function App() {
 
     
 const endpoint = authMode === "register"
-  ? "/api/auth/register"
-  : "/api/auth/login";
+  ? "https://nawa-1.onrender.com/register"
+  : "https://nawa-1.onrender.com/login";
 const response = await fetch(endpoint, {
   method: "POST",
   headers: { "Content-Type": "application/json" },

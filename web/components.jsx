@@ -2703,15 +2703,33 @@ const QUIZ_BANK = {
   ]
 };
 
-const QuizPage = ({ c, quizContext, onBack }) => {
+const QuizPage = ({ c, quizContext, onBack, authToken }) => {
   const isArabic = typeof document !== "undefined" && document.documentElement?.dir === "rtl";
   const materialId = quizContext?.materialId || "physics";
   const experimentIndex = quizContext?.experimentIndex ?? 0;
   const bankKey = `${materialId}_${experimentIndex}`;
   const questions = QUIZ_BANK[bankKey] || QUIZ_BANK[`${materialId}_0`] || QUIZ_BANK.physics_0;
   const [answers, setAnswers] = useState({});
+  const [resultSaved, setResultSaved] = useState(false);
   const score = questions.reduce((total, question, index) => total + (answers[index] === question.answer ? 1 : 0), 0);
   const completed = Object.keys(answers).length === questions.length;
+
+  useEffect(() => {
+    if (!completed || resultSaved || !authToken) return;
+    setResultSaved(true);
+    fetch("https://nawa-1.onrender.com/results", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${authToken}`
+      },
+      body: JSON.stringify({
+        experiment: quizContext?.experimentTitle || materialId,
+        score,
+        total: questions.length
+      })
+    }).catch(() => {});
+  }, [completed, resultSaved, authToken, score, questions.length, materialId, quizContext]);
 
   return (
     <section className="quiz-page" id="quiz-page">
